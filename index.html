@@ -323,6 +323,10 @@ async function login(saved) {
     const d = await call('init');
     S.settings = d.settings; S.sessions = d.sessions; S.url = location.origin + location.pathname;
     S.session = S.settings.CurrentSession;
+    // First login: take the centre name from the licence list if the sheet still has the default name
+    if (S.lic && S.lic.center && /^(My Coaching Center|\u{0986}\u{09ae}\u{09be}\u{09b0} .*|)$/u.test(String(S.settings.CenterName || '').trim())) {
+      try { S.settings = Object.assign(S.settings, await call('saveSettings', { CenterName: S.lic.center })); } catch (e) {}
+    }
     store('cc_pw', S.pw);
     $('login').hidden = true; $('app').hidden = false;
     await loadData();
