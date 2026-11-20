@@ -156,8 +156,7 @@ pre.msg{white-space:pre-wrap;background:var(--pl);border-radius:12px;padding:12p
 </head>
 <body>
 <script>
-// ===== SET THIS ONCE: the /exec link of YOUR licence server =====
-const LICENSE_URL = 'https://script.google.com/macros/s/AKfycbwc_BR9aoWdV0ueerAvVCv_ymUPUl5LGKVSJ5yn83dVf5YUCafU6MIyP1F8pp6IQZ__/exec';
+// Licences are kept in licenses.js (same GitHub folder). Edit that file to add or renew customers.
 const QS = new URLSearchParams(location.search);
 const MODE = QS.get('p') || '';
 window.onerror = function (m, s, l) {
@@ -761,19 +760,38 @@ function showGate(reason, lic) {
   $('gateForm').hidden = renew;
   $('gateContact').innerHTML = contactHTML(lic && lic.contact);
 }
+function loadLicences() {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'licenses.js?t=' + Date.now();          // always the newest list
+    s.onload = () => res(); s.onerror = () => rej(new Error('licenses.js not found'));
+    document.head.appendChild(s);
+  });
+}
 async function checkLicence(code) {
-  const url = LICENSE_URL + '?c=' + encodeURIComponent(code);
   try {
-    const r = await fetch(url, { redirect: 'follow' }).then(x => x.json());
-    store('cc_lic', JSON.stringify(Object.assign({ checked: ym() + '-' + String(new Date().getDate()).padStart(2, '0') }, r)));
-    return r;
+    await loadLicences();
+    if (typeof LICENSES === 'undefined') throw new Error('bad file');
   } catch (e) {
-    // Licence server unreachable: use the last good answer if it has not expired
+    // Offline or file missing: use the last good answer if it has not expired
     let old = null; try { old = JSON.parse(load('cc_lic') || 'null'); } catch (x) {}
     const today = new Date().toISOString().slice(0, 10);
     if (old && old.ok && old.code === code && (!old.expiry || old.expiry >= today)) return old;
-    throw new Error(navigator.onLine ? 'Cannot reach the licence server. Try again.' : 'No internet connection.');
+    throw new Error(navigator.onLine ? 'Could not load the licence list. Try again.' : 'No internet connection.');
   }
+  const contact = (typeof SELLER !== 'undefined' && SELLER) || {};
+  let row = null;
+  Object.keys(LICENSES).forEach(k => { if (String(k).trim().toUpperCase() === code) row = LICENSES[k]; });
+  if (!row) return { ok: false, reason: 'notfound', contact: contact };
+  const today = new Date().toISOString().slice(0, 10);
+  const base = { code: code, center: row.center || '', expiry: row.expiry || '', contact: contact };
+  let r;
+  if (String(row.status || 'Active').toLowerCase() === 'blocked') r = Object.assign({ ok: false, reason: 'blocked' }, base);
+  else if (row.expiry && row.expiry < today) r = Object.assign({ ok: false, reason: 'expired' }, base);
+  else if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(String(row.server || '').trim())) r = Object.assign({ ok: false, reason: 'noserver' }, base);
+  else r = Object.assign({ ok: true, server: String(row.server).trim() }, base);
+  store('cc_lic', JSON.stringify(r));
+  return r;
 }
 async function activate() {
   const code = $('licCode').value.trim().toUpperCase(); if (!code) return;
@@ -801,7 +819,6 @@ function licBanner() {
   return `<div class="card" style="background:#fff7ed;border-color:#fed7aa"><b>Licence ends on ${esc(S.lic.expiry)}</b> (${days} day${days === 1 ? '' : 's'} left). Please renew to keep using the app.<div style="margin-top:8px">${contactHTML(S.lic.contact)}</div></div>`;
 }
 function start() {
-  if (/PASTE_YOUR/.test(LICENSE_URL)) { showGate('', null); $('gateMsg').textContent = 'Setup needed: put your licence server link in index.html (LICENSE_URL).'; $('gateForm').hidden = true; return; }
   const code = (QS.get('c') || load('cc_code') || '').trim().toUpperCase();
   if (code) openWithCode(code); else showGate('nocode', null);
 }
