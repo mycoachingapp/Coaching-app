@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" id="themeMeta" content="#4f46e5">
+<title>Coaching Center</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--p:#4f46e5;--p2:#0ea5e9;--pl:#eef2ff;--g:#16a34a;--gl:#dcfce7;--r:#dc2626;--rl:#fee2e2;--mu:#64748b;--bd:#e5e7eb;--bg:#f4f6fb;--side:250px}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:'Poppins',system-ui,sans-serif;background:var(--bg);color:#0f172a;font-size:14.5px;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font-family:inherit;font-size:14.5px}
+input,select,textarea{width:100%;padding:10px 12px;border:1.5px solid #dbe1ea;border-radius:10px;background:#fff;outline:none;transition:border .15s,box-shadow .15s}
+input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px var(--pl)}
+button{padding:10px 16px;border:0;border-radius:10px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;cursor:pointer;font-weight:600;transition:transform .1s,box-shadow .15s;box-shadow:0 4px 12px #0000001a}
+button:active{transform:scale(.97)}
+button.sec{background:#eef1f6;color:#1e293b;box-shadow:none}
+button.red{background:linear-gradient(135deg,#ef4444,#f97316)}
+button.grn{background:linear-gradient(135deg,#16a34a,#10b981)}
+button.sm{padding:6px 11px;font-size:13px;border-radius:8px}
+button.ghost{background:none;color:inherit;box-shadow:none;padding:6px 8px}
+a.btn{display:inline-block;padding:6px 11px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;color:#fff;margin:2px 0}
+a.wa{background:linear-gradient(135deg,#22c55e,#15803d)} a.sms{background:linear-gradient(135deg,#0ea5e9,#2563eb)} a.sent{opacity:.4}
+a{color:var(--p)}
+
+/* ---- Sidebar ---- */
+#side{position:fixed;top:0;left:0;bottom:0;width:var(--side);background:linear-gradient(165deg,var(--p),var(--p2));color:#fff;display:flex;flex-direction:column;padding:18px 14px;z-index:40;transition:transform .25s ease;overflow-y:auto}
+.brand{display:flex;gap:10px;align-items:center}
+.logo{width:44px;height:44px;border-radius:14px;background:#ffffff33;display:grid;place-items:center;font-size:24px;flex-shrink:0}
+.brand b{font-size:15.5px;line-height:1.25;display:block}
+.brand small{opacity:.8;font-size:12px}
+.sessbox{margin-top:16px;background:#ffffff1f;border-radius:12px;padding:10px}
+.sessbox label{color:#fffc;margin-bottom:4px}
+#side select{background:#ffffff2b;color:#fff;border:1px solid #ffffff55;padding:8px 10px}
+#side select option{color:#000}
+.nav{display:flex;flex-direction:column;gap:4px;margin-top:14px;flex:1}
+.nav button{background:transparent;color:#ffffffe0;text-align:left;display:flex;gap:12px;align-items:center;padding:11px 12px;border-radius:12px;font-weight:500;box-shadow:none}
+.nav button:hover{background:#ffffff22}
+.nav button.on{background:#fff;color:var(--p);font-weight:600;box-shadow:0 8px 18px #0000002a}
+.nav .ic{font-size:18px;width:24px;text-align:center}
+.sidefoot{border-top:1px solid #ffffff33;padding-top:10px;font-size:12px;opacity:.9;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sidefoot button{background:#ffffff26;box-shadow:none;padding:7px 12px;font-size:13px}
+#scrim{display:none;position:fixed;inset:0;background:#0f172a80;z-index:35}
+
+.wrap{margin-left:var(--side);min-height:100vh}
+.topbar{position:sticky;top:0;z-index:30;background:#ffffffeb;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 18px;display:flex;align-items:center;gap:12px}
+.topbar h2{margin:0;font-size:18px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#menuBtn{display:none;font-size:22px;background:var(--pl);color:var(--p);box-shadow:none;padding:6px 11px}
+.chip{background:var(--pl);color:var(--p);padding:5px 11px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap}
+main{padding:18px;max-width:1150px;margin:auto;padding-bottom:40px}
+
+/* ---- Cards ---- */
+.card{background:#fff;border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 2px 10px #0f172a0d;border:1px solid #eef0f5}
+.card h3{margin:0 0 12px;font-size:16px;display:flex;align-items:center;gap:8px}
+.card h3::before{content:'';width:5px;height:18px;border-radius:4px;background:linear-gradient(var(--p),var(--p2))}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.stat{border-radius:18px;padding:16px;color:#fff;position:relative;overflow:hidden;box-shadow:0 10px 22px #0f172a1f}
+.stat b{display:block;font-size:24px;font-weight:700}
+.stat span{font-size:12.5px;opacity:.92}
+.stat .ic{position:absolute;right:12px;top:10px;font-size:32px;opacity:.35}
+.c1{background:linear-gradient(135deg,#6366f1,#3b82f6)} .c2{background:linear-gradient(135deg,#10b981,#059669)}
+.c3{background:linear-gradient(135deg,#8b5cf6,#d946ef)} .c4{background:linear-gradient(135deg,#f43f5e,#f97316)}
+.c5{background:linear-gradient(135deg,#f59e0b,#ef4444)} .c6{background:linear-gradient(135deg,#06b6d4,#0ea5e9)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+.row>*{flex:1;min-width:150px}
+label{font-size:12.5px;color:var(--mu);display:block;margin-bottom:4px;font-weight:500}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:9px 10px;border-bottom:1px solid #eef0f5;text-align:left;vertical-align:middle}
+tr.hd th{background:var(--pl);color:var(--p);font-weight:600;white-space:nowrap;font-size:13px}
+tr.hd th:first-child{border-radius:10px 0 0 10px} tr.hd th:last-child{border-radius:0 10px 10px 0}
+tbody tr:hover td{background:#fafbff}
+.tag{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.tg{background:var(--gl);color:var(--g)} .tr{background:var(--rl);color:var(--r)} .tx{background:#e2e8f0;color:#475569}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px}
+.m{border:2px solid var(--bd);border-radius:14px;padding:10px 6px;text-align:center;font-size:12.5px;user-select:none;transition:transform .1s;background:#fff}
+.m b{display:block;font-size:14px}
+.m.paid{background:var(--gl);border-color:#86efac}
+.m.due{background:var(--rl);border-color:#fca5a5;cursor:pointer}
+.m.open{cursor:pointer}
+.m.sel{border-color:var(--p);background:var(--pl);box-shadow:0 0 0 3px var(--p);transform:scale(1.03)}
+.m.na{opacity:.4}
+.mu{color:var(--mu);font-size:12.5px}
+.clsh{background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;padding:7px 12px;border-radius:10px;font-weight:600;margin:14px 0 6px}
+.avatar{width:36px;height:36px;border-radius:50%;display:inline-grid;place-items:center;color:#fff;font-weight:600;font-size:14px;flex-shrink:0}
+.who{display:flex;gap:10px;align-items:center}
+
+/* ---- Frozen action bar ---- */
+.actionbar{position:sticky;bottom:10px;z-index:20;margin-top:16px;padding:12px 14px;background:#ffffffee;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--bd);border-radius:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;box-shadow:0 10px 30px #0f172a26}
+.actionbar .grow{flex:1;min-width:140px;font-weight:600}
+
+/* ---- Login ---- */
+#gate,#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,var(--p),var(--p2))}
+.loginbox{background:#fff;padding:30px 26px;border-radius:22px;width:100%;max-width:360px;box-shadow:0 25px 60px #0004;text-align:center}
+.loginbox .logo{margin:0 auto 10px;background:linear-gradient(135deg,var(--p),var(--p2));width:60px;height:60px;font-size:30px;border-radius:18px}
+
+/* ---- Modal ---- */
+#modal{position:fixed;inset:0;background:#0f172a8c;display:flex;align-items:center;justify-content:center;padding:14px;z-index:50}
+#modal .box{background:#fff;border-radius:18px;width:100%;max-width:580px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 25px 60px #0005}
+.mhead{padding:16px 18px 8px;font-weight:600;font-size:16px;display:flex;justify-content:space-between;align-items:center}
+.mbody{padding:4px 18px 14px;overflow:auto}
+.mfoot{padding:12px 18px;border-top:1px solid var(--bd);display:flex;gap:10px;flex-wrap:wrap;background:#f8fafc;border-radius:0 0 18px 18px}
+.mfoot>*{flex:1}
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:11px 18px;border-radius:12px;display:none;z-index:99;max-width:90vw;box-shadow:0 10px 30px #0004}
+#busy{position:fixed;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--p),var(--p2),var(--p));background-size:200% 100%;animation:bz 1s linear infinite;display:none;z-index:99}
+@keyframes bz{to{background-position:-200% 0}}
+pre.msg{white-space:pre-wrap;background:var(--pl);border-radius:12px;padding:12px;font-family:inherit;font-size:13.5px;margin:6px 0}
+
+/* ---- Mobile ---- */
+@media(max-width:900px){
+  #side{transform:translateX(-105%)} #side.open{transform:none;box-shadow:0 0 50px #0006}
+  #scrim.show{display:block}
+  .wrap{margin-left:0} #menuBtn{display:inline-block}
+  main{padding:12px;padding-bottom:30px}
+  .topbar{padding:8px 12px}
+  .topbar h2{font-size:16px}
+}
+@media(max-width:700px){
+  .row>*{min-width:100%}
+  .row.keep>*{min-width:0}
+  .stats{grid-template-columns:1fr 1fr;gap:10px}
+  .stat{padding:13px}.stat b{font-size:20px}
+  table.rt tr.hd{display:none}
+  table.rt,table.rt tbody{display:block}
+  table.rt tr{display:block;border:1px solid var(--bd);border-radius:14px;margin-bottom:10px;padding:8px 12px;background:#fff;box-shadow:0 2px 8px #0f172a0a}
+  table.rt td{display:flex;justify-content:space-between;align-items:center;gap:12px;border:0;padding:5px 0;text-align:right}
+  table.rt td::before{content:attr(data-l);color:var(--mu);font-size:12px;text-align:left;flex-shrink:0}
+  table.rt td.full{display:block;text-align:left}
+  table.rt td.full::before{display:none}
+  table.rt td input,table.rt td select{max-width:68%}
+  tbody tr:hover td{background:none}
+  #modal{align-items:flex-end;padding:0}
+  #modal .box{border-radius:20px 20px 0 0;max-width:100%;max-height:94vh}
+  .mfoot{border-radius:0;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  .actionbar{bottom:8px;flex-wrap:nowrap;padding:10px;gap:8px}
+  .actionbar .grow{min-width:0;font-size:12.5px;line-height:1.3}
+  .actionbar button{padding:10px 12px;white-space:nowrap;font-size:13.5px}
+  .mgrid{grid-template-columns:repeat(3,1fr);gap:8px}
+  .m{padding:8px 4px;font-size:11.5px}
+}
+#printArea{display:none}
+@media print{
+  body>*{display:none!important}
+  #printArea{display:block!important}
+  .rc{border:2px solid #000;padding:16px;max-width:520px;margin:auto;font-size:14px}
+  .rc table td,.rc table th{border:1px solid #000}
+}
+</style>
+</head>
+<body>
+<script>
+// ===== SET THIS ONCE: the /exec link of YOUR licence server =====
+const LICENSE_URL = 'PASTE_YOUR_LICENSE_SERVER_EXEC_LINK_HERE';
+const QS = new URLSearchParams(location.search);
+const MODE = QS.get('p') || '';
+window.onerror = function (m, s, l) {
+  var d = document.createElement('div');
+  d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999;background:#fee2e2;color:#991b1b;padding:12px;font:14px sans-serif';
+  d.textContent = 'App error: ' + m + ' (line ' + l + ')';
+  document.body.appendChild(d);
+};
+</script>
+
+<div id="busy"></div>
+<div id="toast"></div>
+
+<div id="gate" hidden>
+  <div class="loginbox">
+    <div class="logo">&#x1f511;</div>
+    <h2 style="margin:0 0 4px" id="gateTitle">Activate app</h2>
+    <p class="mu" style="margin-top:0" id="gateMsg">Enter the licence code you received</p>
+    <div id="gateForm"><input id="licCode" placeholder="Licence code, e.g. SC001" style="text-transform:uppercase" onkeydown="if(event.key==='Enter')activate()">
+    <button style="width:100%;margin-top:14px" onclick="activate()">Activate</button></div>
+    <div id="gateContact" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<div id="login" hidden>
+  <div class="loginbox">
+    <div class="logo">&#x1f393;</div>
+    <h2 style="margin:0 0 4px" id="loginCenter">Coaching Center</h2>
+    <p class="mu" style="margin-top:0">Enter admin password</p>
+    <input id="pw" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')login()">
+    <button style="width:100%;margin-top:14px" onclick="login()">Login</button>
+    <p class="mu" id="themeName1" style="margin-bottom:0"></p>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <aside id="side">
+    <div class="brand"><div class="logo">&#x1f393;</div><div><b id="cname">Coaching Center</b><small id="themeName2"></small></div></div>
+    <div class="sessbox"><label>Session</label><select id="sessSel" onchange="changeSession(this.value)"></select></div>
+    <div class="nav" id="tabs"></div>
+    <div class="sidefoot"><span id="todayTxt"></span><button onclick="logout()">Logout</button></div>
+  </aside>
+  <div id="scrim" onclick="toggleSide(false)"></div>
+  <div class="wrap">
+    <div class="topbar"><button id="menuBtn" onclick="toggleSide(true)">&#x2630;</button><h2 id="pageTitle"></h2><span class="chip" id="sessChip"></span></div>
+    <main id="view"></main>
+  </div>
+</div>
+
+<div id="publicView" hidden></div>
+
+<div id="modal" hidden onclick="if(event.target===this)closeModal()"><div class="box" id="modalBox"></div></div>
+<div id="printArea"></div>
+
+<script>
+// ================= Day-wise theme =================
+const THEMES = [
+  ['Sunset Sunday',   '#f97316', '#db2777', '#fff1e8'],
+  ['Ocean Monday',    '#4f46e5', '#0ea5e9', '#eef2ff'],
+  ['Mint Tuesday',    '#0d9488', '#22c55e', '#e7faf5'],
+  ['Berry Wednesday', '#9333ea', '#ec4899', '#f6edff'],
+  ['Golden Thursday', '#d97706', '#e11d48', '#fff6e5'],
+  ['Sky Friday',      '#0284c7', '#06b6d4', '#e6f5ff'],
+  ['Royal Saturday',  '#7c3aed', '#2563eb', '#f1ecff']
+];
+const THEME = THEMES[new Date().getDay()];
+(function applyTheme() {
+  const r = document.documentElement.style;
+  r.setProperty('--p', THEME[1]); r.setProperty('--p2', THEME[2]); r.setProperty('--pl', THEME[3]);
+  try { const m = document.getElementById('themeMeta'); if (m) m.setAttribute('content', THEME[1]); } catch (e) {}
+})();
+
+// ================= State & helpers =================
+const MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const ACTIVE = 'Active', INACTIVE = 'Inactive';
+const AV = ['#6366f1','#10b981','#f43f5e','#f59e0b','#8b5cf6','#06b6d4','#ec4899','#14b8a6'];
+const S = { pw:'', settings:{}, sessions:[], session:'', students:[], payments:[], notes:[], paid:{}, url:'', tab:'dash',
+            f:{cls:'', q:'', st:ACTIVE}, fee:{cls:'', id:'', sel:new Set()}, due:{cls:'', mode:'due'}, bulk:null };
+const TABS = [['dash','\u{1f4ca}','Dashboard'],['students','\u{1f468}\u{200d}\u{1f393}','Students'],['fee','\u{1f4b0}','Fee Collection'],['due','\u{1f514}','Dues & Messages'],
+              ['notes','\u{1f4da}','Notes (PDF)'],['year','\u{1f393}','New Year'],['settings','\u{2699}\u{fe0f}','Settings']];
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rs = n => '\u{20b9}' + Number(n || 0).toLocaleString('en-IN');
+const ym = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+const mLabel = m => { const [y, mm] = String(m).split('-'); return (MN[+mm - 1] || m) + ' ' + (y || ''); };
+const mShort = m => { const [y, mm] = String(m).split('-'); return (MS[+mm - 1] || m) + " '" + String(y).slice(2); };
+const clsName = c => /^\d+$/.test(String(c)) ? 'Class ' + c : String(c);
+const classes = () => String(S.settings.Classes || '').split(',').map(x => x.trim()).filter(Boolean);
+const sum = (a, f) => a.reduce((t, x) => t + (Number(f(x)) || 0), 0);
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+const td = (l, h, cls) => `<td data-l="${esc(l)}"${cls ? ` class="${cls}"` : ''}>${h}</td>`;
+const avatar = name => { const n = String(name || '?').trim(); let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return `<span class="avatar" style="background:${AV[h % AV.length]}">${esc(n.charAt(0).toUpperCase())}</span>`; };
+
+function sessMonths(name) {
+  const y = parseInt(name, 10), sm = parseInt(S.settings.SessionStartMonth, 10) || 1, a = [];
+  for (let i = 0; i < 12; i++) { const k = sm - 1 + i; a.push((y + Math.floor(k / 12)) + '-' + String(k % 12 + 1).padStart(2, '0')); }
+  return a;
+}
+function call(action, p) {
+  $('busy').style.display = 'block';
+  return new Promise((res, rej) => {
+    fetch(S.server, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                      body: JSON.stringify({ pw: S.pw, action: action, p: p || {} }) })
+      .then(r => r.json())
+      .then(r => { $('busy').style.display = 'none'; (r && r.ok) ? res(r.data) : rej(new Error(r ? r.err : 'Server error')); })
+      .catch(e => { $('busy').style.display = 'none'; rej(new Error(navigator.onLine ? 'Cannot reach the server. Try again.' : 'No internet connection.')); });
+  });
+}
+function toast(t, ms) { const el = $('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(el._t); el._t = setTimeout(() => el.style.display = 'none', ms || 3000); }
+function openModal(title, body, foot) {
+  $('modalBox').innerHTML = `<div class="mhead"><span>${title}</span><button class="ghost" onclick="closeModal()">\u{2715}</button></div>
+    <div class="mbody">${body}</div>${foot ? `<div class="mfoot">${foot}</div>` : ''}`;
+  $('modal').hidden = false;
+}
+function closeModal() { $('modal').hidden = true; }
+function toggleSide(open) { $('side').classList.toggle('open', open); $('scrim').classList.toggle('show', open); }
+function store(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+function clsIdx(c) { const i = classes().indexOf(c); return i < 0 ? 999 : i; }
+function sortStu(a) { return a.slice().sort((x, y) => clsIdx(x.Class) - clsIdx(y.Class) || (parseInt(x.Roll) || 9999) - (parseInt(y.Roll) || 9999) || x.Name.localeCompare(y.Name)); }
+function stuById(id) { return S.students.find(s => s.ID === id); }
+function buildIndex() { S.paid = {}; S.payments.forEach(p => { (S.paid[p.StudentID] = S.paid[p.StudentID] || {})[p.Month] = p; }); }
+function dueMonths(st) {
+  if (st.Status !== ACTIVE) return [];
+  const cur = ym(), pm = S.paid[st.ID] || {};
+  return sessMonths(st.Session).filter(m => m >= (st.StartMonth || '') && m <= cur && !pm[m]);
+}
+function clsOptions(sel, all) {
+  return (all ? `<option value="">All classes</option>` : '') + classes().map(c => `<option value="${esc(c)}" ${c === sel ? 'selected' : ''}>${esc(clsName(c))}</option>`).join('');
+}
+function defStartMonth() { const ms = sessMonths(S.session), cur = ym(); return ms.includes(cur) ? cur : ms[0]; }
+
+// ================= Messages =================
+function msgDue(st) {
+  const dm = dueMonths(st), c = S.settings.CenterName, g = st.Guardian || 'Guardian';
+  const ph = S.settings.CenterPhone ? `\nContact: ${S.settings.CenterPhone}` : '';
+  if (!dm.length) return `Dear ${g},\nThere are no pending fees for ${st.Name} (${clsName(st.Class)}) as of now. Thank you.\n\u{2014} ${c}`;
+  return `Dear ${g},\nThis is a reminder from ${c} that the fees of ${st.Name} (${clsName(st.Class)}) for ${plural(dm.length, 'month')} are still pending:\n${dm.map(mLabel).join(', ')}\nTotal due: ${rs(dm.length * st.MonthlyFee)}\nKindly pay at the earliest. Thank you.\n\u{2014} ${c}${ph}`;
+}
+function msgPaid(st, rno) {
+  const rows = S.payments.filter(p => p.ReceiptNo === rno);
+  if (!rows.length) return msgDue(st);
+  const dm = dueMonths(st), c = S.settings.CenterName, g = st.Guardian || 'Guardian';
+  return `Dear ${g},\nWe have received ${rs(sum(rows, r => r.Amount))} towards the fees of ${st.Name} (${clsName(st.Class)}) for ${rows.map(r => mLabel(r.Month)).join(', ')}.\nReceipt No: ${rno}, Date: ${rows[0].Date}\n` +
+    (dm.length ? `Still pending: ${plural(dm.length, 'month')} (${dm.map(mLabel).join(', ')}) \u{2014} ${rs(dm.length * st.MonthlyFee)}` : `No dues pending as of now.`) + `\nThank you.\n\u{2014} ${c}`;
+}
+function phone91(p) { let d = String(p || '').replace(/\D/g, ''); if (d.length === 11 && d[0] === '0') d = d.slice(1); if (d.length === 10) d = '91' + d; return d; }
+function waLink(p, m) { return 'https://wa.me/' + phone91(p) + '?text=' + encodeURIComponent(m); }
+function smsLink(p, m) { return 'sms:+' + phone91(p) + '?body=' + encodeURIComponent(m); }
+function msgButtons(st, msg) {
+  if (!st.Phone) return '<span class="mu">No phone</span>';
+  return `<a class="btn wa" target="_blank" href="${esc(waLink(st.Phone, msg))}" onclick="this.classList.add('sent')">WhatsApp</a>
+          <a class="btn sms" target="_blank" href="${esc(smsLink(st.Phone, msg))}" onclick="this.classList.add('sent')">SMS</a>`;
+}
+
+// ================= Login & load =================
+async function login(saved) {
+  S.pw = saved || $('pw').value;
+  if (!S.pw) return;
+  try {
+    const d = await call('init');
+    S.settings = d.settings; S.sessions = d.sessions; S.url = location.origin + location.pathname;
+    S.session = S.settings.CurrentSession;
+    store('cc_pw', S.pw);
+    $('login').hidden = true; $('app').hidden = false;
+    await loadData();
+  } catch (e) { store('cc_pw', null); $('login').hidden = false; toast(e.message); }
+}
+function logout() { store('cc_pw', null); location.reload(); }
+async function loadData() {
+  const d = await call('data', { Session: S.session });
+  S.students = d.students; S.payments = d.payments; S.notes = d.notes;
+  buildIndex(); renderShell(); render();
+}
+async function changeSession(v) { S.session = v; S.fee = { cls:'', id:'', sel:new Set() }; toggleSide(false); try { await loadData(); toast('Showing session ' + v); } catch (e) { toast(e.message); } }
+function renderShell() {
+  $('cname').textContent = S.settings.CenterName || 'Coaching Center';
+  $('themeName2').textContent = '\u{1f3a8} ' + THEME[0];
+  $('todayTxt').textContent = new Date().toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' });
+  $('sessSel').innerHTML = S.sessions.map(s => `<option ${s === S.session ? 'selected' : ''}>${esc(s)}</option>`).join('');
+  $('tabs').innerHTML = TABS.map(([k, ic, t]) => `<button class="${k === S.tab || (k === 'students' && S.tab === 'bulk') ? 'on' : ''}" onclick="go('${k}')"><span class="ic">${ic}</span>${t}</button>`).join('');
+  const t = TABS.find(x => x[0] === S.tab) || ['bulk', '\u{1f4dd}', 'Add Many Students'];
+  $('pageTitle').textContent = t[1] + '  ' + t[2];
+  $('sessChip').textContent = 'Session ' + S.session;
+}
+function go(t) { S.tab = t; toggleSide(false); renderShell(); render(); window.scrollTo(0, 0); }
+function render() { $('view').innerHTML = VIEWS[S.tab](); if (AFTER[S.tab]) AFTER[S.tab](); }
+const AFTER = {};
+
+// ================= Dashboard =================
+function vDash() {
+  const act = S.students.filter(s => s.Status === ACTIVE), cur = ym();
+  const cashThis = sum(S.payments.filter(p => { const d = String(p.Date).split('/'); return d[2] + '-' + d[1] === cur; }), p => p.Amount);
+  const total = sum(S.payments, p => p.Amount);
+  const dueList = act.map(s => ({ s, d: dueMonths(s) })).filter(x => x.d.length);
+  const dueAmt = sum(dueList, x => x.d.length * x.s.MonthlyFee);
+  const byCls = classes().concat([...new Set(S.students.map(s => s.Class))].filter(c => !classes().includes(c)));
+  const clsRows = byCls.map(c => {
+    const st = act.filter(s => s.Class === c); if (!st.length) return '';
+    const paidNow = st.filter(s => (S.paid[s.ID] || {})[cur]).length;
+    const dl = dueList.filter(x => x.s.Class === c);
+    return `<tr>${td('Class', '<b>' + esc(clsName(c)) + '</b>')}${td('Students', st.length)}${td('Paid this month', paidNow)}${td('With dues', dl.length ? `<span class="tag tr">${dl.length}</span>` : '0')}${td('Due amount', rs(sum(dl, x => x.d.length * x.s.MonthlyFee)))}</tr>`;
+  }).join('');
+  const maxM = Math.max(1, ...sessMonths(S.session).map(m => sum(S.payments.filter(p => p.Month === m), p => p.Amount)));
+  const mRows = sessMonths(S.session).map(m => {
+    const ps = S.payments.filter(p => p.Month === m), amt = sum(ps, p => p.Amount);
+    return `<tr>${td('Month', mLabel(m))}${td('Paid (students)', ps.length)}${td('Amount', `<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><div style="height:8px;border-radius:6px;background:linear-gradient(90deg,var(--p),var(--p2));width:${Math.round(amt / maxM * 120)}px"></div>${rs(amt)}</div>`)}</tr>`;
+  }).join('');
+  return licBanner() + `
+  <div class="stats">
+    <div class="stat c1"><span class="ic">\u{1f468}\u{200d}\u{1f393}</span><b>${act.length}</b><span>Active students</span></div>
+    <div class="stat c2"><span class="ic">\u{1f4b5}</span><b>${rs(cashThis)}</b><span>Collected this month</span></div>
+    <div class="stat c3"><span class="ic">\u{1f4c8}</span><b>${rs(total)}</b><span>Collected this session</span></div>
+    <div class="stat c4"><span class="ic">\u{26a0}\u{fe0f}</span><b>${rs(dueAmt)}</b><span>Total dues</span></div>
+    <div class="stat c5"><span class="ic">\u{1f514}</span><b>${dueList.length}</b><span>Students with dues</span></div>
+    <div class="stat c6"><span class="ic">\u{1f4da}</span><b>${S.notes.length}</b><span>Notes (PDF)</span></div>
+  </div>
+  <div class="card"><h3>Class-wise summary</h3><div class="tw"><table class="rt">
+    <tr class="hd"><th>Class</th><th>Students</th><th>Paid for ${MN[new Date().getMonth()]}</th><th>With dues</th><th>Due amount</th></tr>
+    ${clsRows || '<tr><td class="full mu">No students added yet \u{2014} go to Students to add.</td></tr>'}</table></div></div>
+  <div class="card"><h3>Month-wise fee collection</h3><div class="tw"><table class="rt">
+    <tr class="hd"><th>Month</th><th>Paid (students)</th><th style="text-align:right">Amount</th></tr>${mRows}</table></div></div>`;
+}
+
+// ================= Students =================
+function vStudents() {
+  const f = S.f, q = f.q.toLowerCase();
+  const list = sortStu(S.students.filter(s => (!f.cls || s.Class === f.cls) && (!f.st || s.Status === f.st) &&
+    (!q || (s.Name + ' ' + s.Phone + ' ' + s.Guardian + ' ' + s.Roll).toLowerCase().includes(q))));
+  const rows = list.map(s => {
+    const d = dueMonths(s);
+    return `<tr>${td('', `<div class="who">${avatar(s.Name)}<div><b>${esc(s.Name)}</b><div class="mu">${esc(clsName(s.Class))}${s.Roll ? ' \u{2022} Roll ' + esc(s.Roll) : ''}</div></div></div>`, 'full')}
+      ${td('Guardian', esc(s.Guardian) || '\u{2014}')}${td('Phone', s.Phone ? `<a href="tel:${esc(s.Phone)}">${esc(s.Phone)}</a>` : '\u{2014}')}${td('Monthly', rs(s.MonthlyFee))}
+      ${td('Dues', s.Status !== ACTIVE ? '<span class="tag tx">Inactive</span>' : d.length ? `<span class="tag tr">${plural(d.length, 'month')}</span>` : '<span class="tag tg">Clear</span>')}
+      ${td('', `<button class="sm" onclick="feeFor('${s.ID}')">\u{1f4b0} Fee</button> <button class="sm sec" onclick="stuForm('${s.ID}')">\u{270f}\u{fe0f} Edit</button>`)}</tr>`;
+  }).join('');
+  return `<div class="card"><div class="row keep">
+      <div><label>Class</label><select onchange="S.f.cls=this.value;render()">${clsOptions(f.cls, true)}</select></div>
+      <div><label>Status</label><select onchange="S.f.st=this.value;render()">
+        <option value="${ACTIVE}" ${f.st === ACTIVE ? 'selected' : ''}>Active</option><option value="${INACTIVE}" ${f.st === INACTIVE ? 'selected' : ''}>Inactive</option><option value="" ${!f.st ? 'selected' : ''}>All</option></select></div>
+      <div style="flex:2;min-width:100%"><label>Search</label><input id="sq" value="${esc(f.q)}" placeholder="\u{1f50d} Name / phone / roll" oninput="S.f.q=this.value;clearTimeout(window._sq);window._sq=setTimeout(()=>{render();const e=$('sq');e.focus();e.setSelectionRange(e.value.length,e.value.length)},300)"></div>
+    </div></div>
+    <div class="card"><h3>${plural(list.length, 'student')}</h3><div class="tw"><table class="rt">
+      <tr class="hd"><th>Student</th><th>Guardian</th><th>Phone</th><th>Monthly</th><th>Dues</th><th></th></tr>
+      ${rows || '<tr><td class="full mu">No students</td></tr>'}</table></div></div>
+    <div class="actionbar"><span class="grow">\u{1f468}\u{200d}\u{1f393} ${plural(list.length, 'student')}</span>
+      <button class="sec" onclick="bulkStart()">\u{1f4dd} Add Many</button><button onclick="stuForm()">+ New Student</button></div>`;
+}
+function stuForm(id) {
+  const s = id ? stuById(id) : { Class: S.f.cls || classes()[0], Status: ACTIVE, MonthlyFee: '', StartMonth: '' };
+  const months = sessMonths(S.session), defStart = s.StartMonth || defStartMonth();
+  openModal(`${id ? '\u{270f}\u{fe0f} Edit student' : '\u{2795} New student'} <span class="mu">\u{2014} Session ${esc(S.session)}</span>`,
+   `<div class="row"><div><label>Student name *</label><input id="fName" value="${esc(s.Name)}"></div>
+     <div><label>Class *</label><select id="fClass">${clsOptions(s.Class)}</select></div></div>
+   <div class="row keep" style="margin-top:10px"><div><label>Roll</label><input id="fRoll" value="${esc(s.Roll)}"></div>
+     <div><label>Monthly fee (\u{20b9})</label><input id="fFee" type="number" inputmode="numeric" value="${esc(s.MonthlyFee)}"></div></div>
+   <div class="row" style="margin-top:10px"><div><label>Guardian name</label><input id="fGuard" value="${esc(s.Guardian)}"></div>
+     <div><label>Guardian mobile (WhatsApp)</label><input id="fPhone" type="tel" inputmode="tel" value="${esc(s.Phone)}"></div></div>
+   <div class="row keep" style="margin-top:10px"><div><label>Studying from</label><select id="fStart">${months.map(m => `<option value="${m}" ${m === defStart ? 'selected' : ''}>${mLabel(m)}</option>`).join('')}</select></div>
+     <div><label>Status</label><select id="fStatus"><option ${s.Status === ACTIVE ? 'selected' : ''}>${ACTIVE}</option><option ${s.Status === INACTIVE ? 'selected' : ''}>${INACTIVE}</option></select></div></div>
+   <div style="margin-top:10px"><label>Address</label><input id="fAddr" value="${esc(s.Address)}"></div>`,
+   `${id ? `<button class="red" onclick="delStu('${id}')">Delete</button>` : ''}<button class="sec" onclick="closeModal()">Cancel</button><button onclick="saveStu('${id || ''}')">\u{1f4be} Save</button>`);
+}
+async function saveStu(id) {
+  const o = { ID: id || '', Session: S.session, Name: $('fName').value, Class: $('fClass').value, Roll: $('fRoll').value,
+    MonthlyFee: $('fFee').value, Guardian: $('fGuard').value, Phone: $('fPhone').value.replace(/\s/g, ''),
+    StartMonth: $('fStart').value, Status: $('fStatus').value, Address: $('fAddr').value };
+  if (id) { const ex = stuById(id); o.JoinDate = ex.JoinDate; }
+  try { await call('saveStudent', o); closeModal(); toast('\u{2705} Saved'); await loadData(); } catch (e) { toast(e.message); }
+}
+async function delStu(id) {
+  if (!confirm('Delete this student?')) return;
+  try { await call('deleteStudent', { ID: id }); closeModal(); toast('Deleted'); await loadData(); } catch (e) { toast(e.message, 5000); }
+}
+
+// ================= Add many students =================
+function blankRow() { return { Name:'', Roll:'', Guardian:'', Phone:'', MonthlyFee: S.bulk ? S.bulk.fee : '' }; }
+function initBulk() { S.bulk = { cls: S.f.cls || classes()[0], fee: '', start: defStartMonth(), rows: [] }; for (let i = 0; i < 10; i++) S.bulk.rows.push(blankRow()); }
+function bulkStart() { initBulk(); go('bulk'); }
+function bulkCollect() {
+  const B = S.bulk; if (!B || !$('bCls')) return;
+  B.cls = $('bCls').value; B.fee = $('bFee').value; B.start = $('bStart').value;
+  document.querySelectorAll('tr[data-i]').forEach(tr => { const r = B.rows[+tr.dataset.i]; tr.querySelectorAll('input').forEach(inp => r[inp.name] = inp.value); });
+}
+function bulkMore(n) { bulkCollect(); for (let i = 0; i < n; i++) S.bulk.rows.push(blankRow()); const y = window.scrollY; render(); window.scrollTo(0, y); }
+function bulkFee() { const v = $('bFee').value; document.querySelectorAll('input[name=MonthlyFee]').forEach(i => { if (!i.value || i.dataset.auto) { i.value = v; i.dataset.auto = 1; } }); }
+function vBulk() {
+  if (!S.bulk) initBulk(); const B = S.bulk;
+  const months = sessMonths(S.session);
+  const rows = B.rows.map((r, i) => `<tr data-i="${i}">
+    ${td('#', `<b style="color:var(--p)">${i + 1}</b>`)}
+    ${td('Name *', `<input name="Name" value="${esc(r.Name)}" placeholder="Student name">`)}
+    ${td('Roll', `<input name="Roll" value="${esc(r.Roll)}" style="max-width:90px">`)}
+    ${td('Guardian', `<input name="Guardian" value="${esc(r.Guardian)}">`)}
+    ${td('Mobile', `<input name="Phone" type="tel" inputmode="tel" value="${esc(r.Phone)}">`)}
+    ${td('Fee \u{20b9}', `<input name="MonthlyFee" type="number" inputmode="numeric" value="${esc(r.MonthlyFee)}" style="max-width:100px">`)}</tr>`).join('');
+  const filled = B.rows.filter(r => String(r.Name).trim()).length;
+  return `<div class="card"><h3>Add many students at once</h3>
+    <p class="mu" style="margin-top:0">Choose the class, fill the rows and press Save at the bottom. Empty rows are ignored.</p>
+    <div class="row"><div><label>Class</label><select id="bCls">${clsOptions(B.cls)}</select></div>
+      <div><label>Monthly fee for all (\u{20b9})</label><input id="bFee" type="number" inputmode="numeric" value="${esc(B.fee)}" oninput="bulkFee()"></div>
+      <div><label>Studying from</label><select id="bStart">${months.map(m => `<option value="${m}" ${m === B.start ? 'selected' : ''}>${mLabel(m)}</option>`).join('')}</select></div></div></div>
+   <div class="card"><div class="tw"><table class="rt"><tr class="hd"><th>#</th><th>Name *</th><th>Roll</th><th>Guardian</th><th>Mobile</th><th>Fee \u{20b9}</th></tr>${rows}</table></div>
+    <div style="margin-top:10px"><button class="sec sm" onclick="bulkMore(5)">+ 5 rows</button> <button class="sec sm" onclick="bulkMore(10)">+ 10 rows</button></div></div>
+   <div class="actionbar"><span class="grow" id="bCount">${filled ? plural(filled, 'name') + ' entered' : 'Fill student names'}</span>
+     <button class="sec" onclick="S.bulk=null;go('students')">Cancel</button><button class="grn" onclick="bulkSave()">\u{1f4be} Save All</button></div>`;
+}
+AFTER.bulk = () => { const v = $('view'); v.oninput = () => { const n = [...document.querySelectorAll('input[name=Name]')].filter(i => i.value.trim()).length; const el = $('bCount'); if (el) el.textContent = n ? plural(n, 'name') + ' entered' : 'Fill student names'; }; };
+async function bulkSave() {
+  bulkCollect(); const B = S.bulk;
+  const list = B.rows.filter(r => String(r.Name).trim()).map(r => Object.assign({}, r, { Class: B.cls, StartMonth: B.start, MonthlyFee: r.MonthlyFee || B.fee, Phone: String(r.Phone).replace(/\s/g, '') }));
+  if (!list.length) return toast('Enter at least one name');
+  try { const n = await call('saveStudentsBulk', { Session: S.session, List: list }); toast(`\u{2705} ${plural(n, 'student')} added to ${clsName(B.cls)}`, 4000); S.bulk = null; S.f.cls = B.cls; S.tab = 'students'; await loadData(); }
+  catch (e) { toast(e.message, 5000); }
+}
+
+// ================= Fee collection =================
+function feeFor(id) { const s = stuById(id); S.fee = { cls: s.Class, id, sel: new Set() }; go('fee'); }
+function vFee() {
+  const F = S.fee, list = sortStu(S.students.filter(s => (!F.cls || s.Class === F.cls)));
+  const picker = `<div class="card"><div class="row">
+     <div><label>Class</label><select onchange="S.fee={cls:this.value,id:'',sel:new Set()};render()">${clsOptions(F.cls, true)}</select></div>
+     <div style="flex:2"><label>Student</label><select onchange="S.fee.id=this.value;S.fee.sel=new Set();render()"><option value="">\u{2014} Select student \u{2014}</option>
+       ${list.filter(x => x.Status === ACTIVE || x.ID === F.id).map(x => `<option value="${x.ID}" ${x.ID === F.id ? 'selected' : ''}>${esc(x.Name)} \u{2014} ${esc(clsName(x.Class))}${x.Roll ? ' / ' + esc(x.Roll) : ''}</option>`).join('')}</select></div>
+   </div></div>`;
+  const s = F.id && stuById(F.id);
+  if (!s) return picker + '<div class="card mu" style="text-align:center;padding:30px">\u{1f446} Select a student to collect fees</div>';
+  const pm = S.paid[s.ID] || {}, cur = ym(), due = dueMonths(s);
+  const grid = sessMonths(S.session).map(m => {
+    const p = pm[m], before = m < (s.StartMonth || '');
+    let cls = 'm', info = '';
+    if (p) { cls += ' paid'; info = `\u{2705} ${rs(p.Amount)}<br><span class="mu">${esc(p.ReceiptNo)}</span>`; }
+    else if (before) { cls += ' na'; info = 'Before joining'; }
+    else if (m <= cur) { cls += ' due'; info = '\u{2757} Due'; }
+    else { cls += ' open'; info = 'Advance'; }
+    if (F.sel.has(m)) cls += ' sel';
+    const click = (!p && !before) ? `onclick="togM('${m}')"` : '';
+    return `<div class="${cls}" ${click}><b>${mShort(m)}</b>${info}</div>`;
+  }).join('');
+  const receipts = [...new Set(S.payments.filter(p => p.StudentID === s.ID).map(p => p.ReceiptNo))].reverse();
+  return picker + `
+   <div class="card"><div class="row keep" style="align-items:center">
+     <div class="who" style="flex:3">${avatar(s.Name)}<div><b style="font-size:16px">${esc(s.Name)}</b><div class="mu">${esc(clsName(s.Class))}${s.Roll ? ' \u{2022} Roll ' + esc(s.Roll) : ''} \u{2022} ${esc(s.Guardian)} \u{2022} ${esc(s.Phone)}</div></div></div>
+     <div style="text-align:right">${due.length ? `<span class="tag tr">${plural(due.length, 'month')} due \u{2014} ${rs(due.length * s.MonthlyFee)}</span>` : '<span class="tag tg">No dues</span>'}</div></div></div>
+   <div class="card"><h3>Select months</h3>
+     <p class="mu" style="margin-top:-6px">Tap the months being paid (red = due, white = advance). ${due.length ? `<a href="#" onclick="selDue();return false">Select all due months</a>` : ''}</p>
+     <div class="mgrid">${grid}</div>
+     <div class="row" style="margin-top:16px">
+       <div><label>Per month (\u{20b9})</label><input id="pPer" type="number" inputmode="numeric" value="${esc(s.MonthlyFee)}" oninput="updTotal()"></div>
+       <div><label>Mode</label><select id="pMode"><option>Cash</option><option>UPI / Online</option><option>Other</option></select></div>
+       <div><label>Note</label><input id="pNote"></div></div></div>
+   ${receipts.length ? `<div class="card"><h3>Previous receipts</h3><div class="tw"><table class="rt"><tr class="hd"><th>Receipt</th><th>Date</th><th>Months</th><th>Amount</th><th></th></tr>
+     ${receipts.map(r => { const ps = S.payments.filter(p => p.ReceiptNo === r); return `<tr>${td('Receipt', '<b>' + esc(r) + '</b>')}${td('Date', esc(ps[0].Date))}${td('Months', ps.map(p => mShort(p.Month)).join(', '))}${td('Amount', rs(sum(ps, p => p.Amount)))}
+       ${td('', `<button class="sm sec" onclick="showReceipt('${r}')">View</button> <button class="sm red" onclick="delReceipt('${r}')">Cancel</button>`)}</tr>`; }).join('')}</table></div></div>` : ''}
+   <div class="actionbar"><span class="grow" id="pTotal"></span><button class="grn" onclick="savePay()">\u{1f4be} Collect & Receipt</button></div>`;
+}
+AFTER.fee = () => updTotal();
+function togM(m) { const s = S.fee.sel; s.has(m) ? s.delete(m) : s.add(m); keepInputs(); }
+function selDue() { dueMonths(stuById(S.fee.id)).forEach(m => S.fee.sel.add(m)); keepInputs(); }
+function keepInputs() { const per = $('pPer') && $('pPer').value, mode = $('pMode') && $('pMode').value, note = $('pNote') && $('pNote').value, y = window.scrollY;
+  render(); if ($('pPer')) { $('pPer').value = per; $('pMode').value = mode; $('pNote').value = note; updTotal(); } window.scrollTo(0, y); }
+function updTotal() { const el = $('pTotal'); if (!el) return; const n = S.fee.sel.size; el.textContent = n ? `${plural(n, 'month')} \u{d7} ${rs($('pPer').value)} = ${rs(n * Number($('pPer').value || 0))}` : 'No month selected'; }
+async function savePay() {
+  const F = S.fee; if (!F.sel.size) return toast('Select month(s) first');
+  const months = [...F.sel].sort();
+  try {
+    const r = await call('savePayment', { StudentID: F.id, Months: months, PerMonth: $('pPer').value, Mode: $('pMode').value, Note: $('pNote').value });
+    F.sel = new Set(); await loadData(); showReceipt(r.ReceiptNo);
+  } catch (e) { toast(e.message, 5000); }
+}
+function receiptHTML(rno) {
+  const ps = S.payments.filter(p => p.ReceiptNo === rno), s = stuById(ps[0].StudentID) || {};
+  return `<div class="rc"><div style="text-align:center"><b style="font-size:19px">${esc(S.settings.CenterName)}</b>
+     <div class="mu">${esc(S.settings.Address)} ${S.settings.CenterPhone ? '\u{2022} Phone: ' + esc(S.settings.CenterPhone) : ''}</div><b>FEE RECEIPT</b></div>
+    <p>Receipt No: <b>${esc(rno)}</b> &nbsp; Date: ${esc(ps[0].Date)}<br>Name: <b>${esc(s.Name)}</b> &nbsp; ${esc(clsName(s.Class))} ${s.Roll ? '\u{2022} Roll ' + esc(s.Roll) : ''}<br>Guardian: ${esc(s.Guardian)}</p>
+    <table><tr><th>Month</th><th>Amount</th></tr>${ps.map(p => `<tr><td>${mLabel(p.Month)}</td><td>${rs(p.Amount)}</td></tr>`).join('')}
+    <tr><th>Total</th><th>${rs(sum(ps, p => p.Amount))}</th></tr></table>
+    <p>Mode: ${esc(ps[0].Mode)} ${ps[0].Note ? '\u{2022} ' + esc(ps[0].Note) : ''}</p><p style="text-align:right;margin-top:30px">Signature</p></div>`;
+}
+function showReceipt(rno) {
+  const ps = S.payments.filter(p => p.ReceiptNo === rno); if (!ps.length) return;
+  const s = stuById(ps[0].StudentID), msg = msgPaid(s, rno);
+  openModal('\u{1f9fe} Receipt ' + esc(rno), `${receiptHTML(rno)}<h4 style="margin:14px 0 4px">Message to guardian</h4><pre class="msg">${esc(msg)}</pre>`,
+    `<button class="sec" onclick="printReceipt('${rno}')">\u{1f5a8}\u{fe0f} Print</button>${s.Phone ? msgButtons(s, msg).replace(/<a /g, '<a style="text-align:center;padding:10px" ') : ''}`);
+}
+function printReceipt(rno) { $('printArea').innerHTML = receiptHTML(rno); window.print(); }
+async function delReceipt(rno) {
+  if (!confirm('Cancel receipt ' + rno + '? All months on this receipt will become "Due" again.')) return;
+  try { await call('deleteReceipt', { ReceiptNo: rno }); toast('Receipt cancelled'); await loadData(); } catch (e) { toast(e.message); }
+}
+
+// ================= Dues & messages =================
+function vDue() {
+  const D = S.due, cur = ym();
+  let list = sortStu(S.students.filter(s => s.Status === ACTIVE && (!D.cls || s.Class === D.cls)));
+  if (D.mode === 'due') list = list.filter(s => dueMonths(s).length);
+  if (D.mode === 'paid') list = list.filter(s => (S.paid[s.ID] || {})[cur]);
+  const rows = list.map(s => {
+    const d = dueMonths(s);
+    const msg = D.mode === 'paid' ? msgPaid(s, S.paid[s.ID][cur].ReceiptNo) : msgDue(s);
+    return `<tr>${td('', `<div class="who">${avatar(s.Name)}<div><b>${esc(s.Name)}</b><div class="mu">${esc(clsName(s.Class))} \u{2022} ${esc(s.Guardian)} \u{2022} ${esc(s.Phone)}</div></div></div>`, 'full')}
+      ${td('Due months', d.length ? `<div><span class="tag tr">${plural(d.length, 'month')}</span><div class="mu">${d.map(mShort).join(', ')}</div></div>` : '<span class="tag tg">None</span>')}
+      ${td('Amount', '<b>' + rs(d.length * s.MonthlyFee) + '</b>')}
+      ${td('', `<div>${msgButtons(s, msg)} <button class="sm sec" onclick="previewMsg('${s.ID}')">View</button></div>`)}</tr>`;
+  }).join('');
+  const tot = sum(list, s => dueMonths(s).length * s.MonthlyFee);
+  return `<div class="card"><div class="row keep">
+     <div><label>Class</label><select onchange="S.due.cls=this.value;render()">${clsOptions(D.cls, true)}</select></div>
+     <div><label>Show</label><select onchange="S.due.mode=this.value;render()">
+       <option value="due" ${D.mode === 'due' ? 'selected' : ''}>Students with dues</option>
+       <option value="paid" ${D.mode === 'paid' ? 'selected' : ''}>Paid this month</option>
+       <option value="all" ${D.mode === 'all' ? 'selected' : ''}>All students</option></select></div></div>
+     <p class="mu" style="margin-bottom:0">Tap WhatsApp / SMS next to a student \u{2014} the message opens ready-made, just press Send. Sent buttons turn faded.</p></div>
+   <div class="card"><h3>${plural(list.length, 'student')} ${D.mode === 'due' ? '\u{2022} Total due ' + rs(tot) : ''}</h3><div class="tw"><table class="rt">
+     <tr class="hd"><th>Student</th><th>Due months</th><th>Amount</th><th>Message</th></tr>${rows || '<tr><td class="full mu">None \u{1f389}</td></tr>'}</table></div></div>`;
+}
+function previewMsg(id) {
+  const s = stuById(id), cur = ym();
+  const msg = S.due.mode === 'paid' && (S.paid[id] || {})[cur] ? msgPaid(s, S.paid[id][cur].ReceiptNo) : msgDue(s);
+  window._msg = msg;
+  openModal('\u{1f4ac} ' + esc(s.Name), `<pre class="msg">${esc(msg)}</pre>`,
+    `${msgButtons(s, msg)}<button class="sec" onclick="navigator.clipboard.writeText(window._msg);toast('Copied')">\u{1f4cb} Copy</button>`);
+}
+
+// ================= Notes =================
+function vNotes() {
+  const link = S.url && S.lic ? S.url + '?c=' + encodeURIComponent(S.lic.code) + '&p=notes' : '';
+  const groups = classes().concat([...new Set(S.notes.map(n => n.Class))].filter(c => !classes().includes(c))).map(c => {
+    const ns = S.notes.filter(n => n.Class === c); if (!ns.length) return '';
+    return `<div class="clsh">\u{1f4d8} ${esc(clsName(c))} \u{2014} ${ns.length}</div><div class="tw"><table class="rt">${ns.slice().reverse().map(n => `<tr>
+      ${td('', `\u{1f4c4} <a href="${esc(n.URL)}" target="_blank"><b>${esc(n.Title)}</b></a><div class="mu">${esc(n.Date)}</div>`, 'full')}
+      ${td('', `<div style="text-align:right"><a class="btn wa" target="_blank" href="${esc('https://wa.me/?text=' + encodeURIComponent(clsName(c) + ' \u{2014} ' + n.Title + '\n' + n.URL))}">Share</a>
+        <button class="sm red" onclick="delNote('${n.NoteID}')">Delete</button></div>`)}</tr>`).join('')}</table></div>`;
+  }).join('');
+  return `<div class="card"><h3>Upload new notes</h3><div class="row">
+     <div><label>Class</label><select id="nCls">${clsOptions(S.nCls || classes()[0])}</select></div>
+     <div style="flex:2"><label>Title (blank = file name)</label><input id="nTitle" placeholder="e.g. Maths \u{2014} Chapter 3"></div></div>
+     <div style="margin-top:10px"><label>PDF file(s) \u{2014} you can select several</label><input id="nFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" multiple></div>
+     <div id="nProg" class="mu" style="margin-top:6px"></div>
+     <p class="mu">Files are stored in your Google Drive folder "Coaching Center Notes", organised by session and class.</p>
+     ${link ? `<div style="background:var(--pl);border-radius:12px;padding:10px 12px"><b>\u{1f517} Notes page for students</b> <span class="mu">(no password needed)</span><br>
+       <a href="${esc(link)}" target="_blank" style="word-break:break-all;font-size:13px">${esc(link)}</a><br>
+       <button class="sm" style="margin-top:6px" onclick="navigator.clipboard.writeText('${esc(link)}');toast('Link copied')">\u{1f4cb} Copy link</button></div>` : ''}</div>
+   <div class="card"><h3>Notes \u{2014} Session ${esc(S.session)}</h3>${groups || '<p class="mu">No notes yet</p>'}</div>
+   <div class="actionbar"><span class="grow">\u{1f4da} ${plural(S.notes.length, 'note')}</span><button onclick="uploadNotes()">\u{2b06}\u{fe0f} Upload</button></div>`;
+}
+function readB64(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(file); }); }
+async function uploadNotes() {
+  const files = [...$('nFile').files], cls = $('nCls').value, title = $('nTitle').value.trim();
+  if (!files.length) return toast('Choose file(s) first');
+  S.nCls = cls; let done = 0;
+  for (const f of files) {
+    if (f.size > 25 * 1024 * 1024) { toast(f.name + ' \u{2014} larger than 25 MB, skipped'); continue; }
+    $('nProg').textContent = `\u{23f3} Uploading (${done + 1}/${files.length}): ${f.name} ...`;
+    try {
+      const data = await readB64(f);
+      await call('uploadNote', { Session: S.session, Class: cls, Title: files.length > 1 ? (title ? title + ' \u{2014} ' : '') + f.name.replace(/\.[^.]+$/, '') : title,
+        FileName: f.name, MimeType: f.type || 'application/pdf', Data: data });
+      done++;
+    } catch (e) { toast(f.name + ': ' + e.message, 5000); }
+  }
+  toast('\u{2705} ' + plural(done, 'file') + ' uploaded'); await loadData();
+}
+async function delNote(id) {
+  if (!confirm('Delete this note? (The file goes to Drive Trash)')) return;
+  try { await call('deleteNote', { NoteID: id }); toast('Deleted'); await loadData(); } catch (e) { toast(e.message); }
+}
+
+// ================= New year =================
+function nextSessName(s) { const m = String(s).match(/^(\d{4})(?:-(\d{2,4}))?/); if (!m) return ''; const y = +m[1] + 1; return m[2] ? y + '-' + String(y + 1).slice(m[2].length === 2 ? 2 : 0) : String(y); }
+function nextCls(c) { const cs = classes(), i = cs.indexOf(c); return i > -1 && i < cs.length - 1 ? cs[i + 1] : ''; }
+function vYear() {
+  const act = sortStu(S.students.filter(s => s.Status === ACTIVE));
+  const rows = act.map(s => { const n = nextCls(s.Class); return `<tr>
+     ${td('', `<label style="display:flex;gap:10px;align-items:center;margin:0;color:inherit;font-size:14px"><input type="checkbox" class="pc" data-id="${s.ID}" ${n ? 'checked' : ''} style="width:20px;height:20px" onchange="yCount()">${avatar(s.Name)}<span><b>${esc(s.Name)}</b><div class="mu">${esc(s.Guardian)}</div></span></label>`, 'full')}
+     ${td('Current class', esc(clsName(s.Class)))}
+     ${td('New class', `<select class="pn" data-id="${s.ID}">${clsOptions(n || s.Class)}</select>`)}</tr>`; }).join('');
+  return `<div class="card"><h3>Start a new session / year</h3>
+    <p class="mu" style="margin-top:0">All records of previous years (students, fees, notes) stay in their own session \u{2014} view them any time from the Session menu. Enter new students fresh in the new session, or promote existing students below.</p>
+    <div class="row"><div><label>New session name</label><input id="ySess" value="${esc(nextSessName(S.session))}" placeholder="e.g. 2027 or 2027-28"></div>
+      <div><label style="display:flex;gap:8px;align-items:center;font-size:14px;color:inherit"><input type="checkbox" id="yCur" checked style="width:20px;height:20px"> Make this the current session</label></div></div></div>
+   <div class="card"><h3>Promote students from ${esc(S.session)}</h3>
+    <p class="mu" style="margin-top:0">Ticked students are copied into their new class (name, guardian, phone and fee stay the same). Students in the last class are unticked.</p>
+    <div style="margin-bottom:10px"><button class="sm sec" onclick="document.querySelectorAll('.pc').forEach(c=>c.checked=true);yCount()">\u{2714} Tick all</button>
+      <button class="sm sec" onclick="document.querySelectorAll('.pc').forEach(c=>c.checked=false);yCount()">\u{2716} Untick all</button></div>
+    <div class="tw"><table class="rt"><tr class="hd"><th>Student</th><th>Current class</th><th>New class</th></tr>${rows || '<tr><td class="full mu">No active students in this session</td></tr>'}</table></div></div>
+   <div class="actionbar"><span class="grow" id="yC"></span><button class="grn" onclick="createSess()">\u{1f393} Create New Session</button></div>`;
+}
+AFTER.year = () => yCount();
+function yCount() { const el = $('yC'); if (el) el.textContent = plural(document.querySelectorAll('.pc:checked').length, 'student') + ' selected'; }
+async function createSess() {
+  const name = $('ySess').value.trim(); if (!name) return toast('Enter a session name');
+  const promote = [...document.querySelectorAll('.pc')].filter(c => c.checked).map(c => ({ ID: c.dataset.id, Class: document.querySelector(`.pn[data-id="${c.dataset.id}"]`).value }));
+  if (!confirm(`Session "${name}" will be created and ${plural(promote.length, 'student')} copied. Continue?`)) return;
+  try {
+    const r = await call('createSession', { Name: name, Promote: promote, SetCurrent: $('yCur').checked });
+    S.sessions = r.sessions; if ($('yCur').checked) S.settings.CurrentSession = name;
+    toast(`\u{2705} ${plural(r.added, 'student')} added${r.skipped ? ', ' + r.skipped + ' already existed' : ''}`, 4000);
+    S.session = name; S.tab = 'students'; await loadData();
+  } catch (e) { toast(e.message, 5000); }
+}
+
+// ================= Settings =================
+function vSettings() {
+  const st = S.settings;
+  return `<div class="card"><h3>Coaching center details</h3>
+    <div class="row"><div><label>Center name</label><input id="sName" value="${esc(st.CenterName)}"></div>
+      <div><label>Phone number</label><input id="sPhone" type="tel" value="${esc(st.CenterPhone)}"></div></div>
+    <div style="margin-top:10px"><label>Address</label><input id="sAddr" value="${esc(st.Address)}"></div>
+    <div class="row" style="margin-top:10px"><div style="flex:2"><label>Classes (comma separated, in order)</label><input id="sCls" value="${esc(st.Classes)}"></div>
+      <div><label>Session starts in</label><select id="sSM">${MN.map((m, i) => `<option value="${i + 1}" ${String(i + 1) === String(st.SessionStartMonth) ? 'selected' : ''}>${m}</option>`).join('')}</select></div></div>
+    <p class="mu">Numbers show as "Class 5". You can also use names, e.g. 5,6,7,8,9,10,11 Science,11 Arts,12</p></div>
+   <div class="card"><h3>Current session</h3><p class="mu" style="margin-top:0">Session shown first when the app opens: <b>${esc(st.CurrentSession)}</b></p>
+    <button class="sec" onclick="setCur()">Make ${esc(S.session)} the current session</button></div>
+   <div class="card"><h3>Change password</h3><div class="row"><div><input id="sPw" type="password" placeholder="New password"></div>
+     <div style="flex:0"><button class="sec" onclick="chPw()" style="white-space:nowrap">\u{1f511} Change</button></div></div></div>
+   <div class="card"><h3>Backup</h3>
+    <p class="mu" style="margin-top:0">A full copy of all data is saved in your Google Drive folder "Coaching Center Backups". The newest 10 copies are kept.</p>
+    <div class="row keep" style="align-items:end"><div><label>Automatic backup</label><select id="bkAuto" onchange="setAuto(this.value)">
+      <option value="weekly">Every Sunday night</option><option value="daily">Every night</option><option value="off">Off</option></select></div></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="grn" onclick="backupNow()">Backup now</button><button class="sec" onclick="downloadExcel()">Download Excel</button></div>
+    <div id="bkList" class="mu" style="margin-top:12px">Loading backups...</div></div>
+   <div class="card"><h3>Today's theme</h3><p class="mu" style="margin:0">\u{1f3a8} ${esc(THEME[0])} \u{2014} the colours change automatically every day of the week.</p></div>
+   <div class="actionbar"><span class="grow">\u{2699}\u{fe0f} Settings</span><button onclick="saveSet()">\u{1f4be} Save Settings</button></div>`;
+}
+AFTER.settings = () => loadBackups();
+function renderBackups(r) {
+  if ($('bkAuto')) $('bkAuto').value = r.auto;
+  const el = $('bkList'); if (!el) return;
+  if (!r.list.length) { el.innerHTML = 'No backups yet. Press "Backup now" to make the first one.'; return; }
+  const kind = { auto: 'Auto', manual: 'Manual', 'before-restore': 'Before restore' };
+  el.innerHTML = `<div class="tw"><table class="rt"><tr class="hd"><th>Date</th><th>Type</th><th></th></tr>${r.list.map(b => `<tr>
+    ${td('Date', '<b>' + esc(b.date) + '</b>')}${td('Type', `<span class="tag ${b.kind === 'auto' ? 'tg' : 'tx'}">${esc(kind[b.kind] || b.kind)}</span>`)}
+    ${td('', `<a class="btn sms" target="_blank" href="${esc(b.url)}">Open</a> <button class="sm red" onclick="restoreBackup('${esc(b.id)}','${esc(b.date)}')">Restore</button>`)}</tr>`).join('')}</table></div>`;
+}
+async function loadBackups() { try { renderBackups(await call('backups')); } catch (e) { const el = $('bkList'); if (el) el.textContent = 'Could not load backups: ' + e.message; } }
+async function backupNow() { try { toast('Saving backup...', 8000); renderBackups(await call('backupNow')); toast('Backup saved in Google Drive'); } catch (e) { toast(e.message, 5000); } }
+async function setAuto(v) { try { await call('setAutoBackup', { Freq: v }); toast(v === 'off' ? 'Automatic backup is off' : 'Automatic backup: ' + (v === 'daily' ? 'every night' : 'every Sunday night')); } catch (e) { toast(e.message, 5000); } }
+async function downloadExcel() {
+  try {
+    toast('Preparing Excel file...', 10000);
+    const r = await call('downloadExcel');
+    const bin = atob(r.data), u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([u8], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = r.name; document.body.appendChild(a); a.click(); a.remove();
+    toast('Excel file downloaded');
+  } catch (e) { toast(e.message, 5000); }
+}
+async function restoreBackup(id, date) {
+  if (!confirm('Restore the backup of ' + date + '?\n\nAll students, fees and notes will go back to how they were on that date. Anything entered after that will be replaced.')) return;
+  if (!confirm('Are you sure? (A copy of today\'s data will be saved first, so you can undo this.)')) return;
+  try { toast('Restoring...', 15000); const r = await call('restoreBackup', { Id: id }); toast('Restored: ' + date, 5000); S.tab = 'dash'; await login(S.pw); } catch (e) { toast(e.message, 6000); }
+}
+async function saveSet() {
+  try { S.settings = Object.assign(S.settings, await call('saveSettings', { CenterName: $('sName').value, CenterPhone: $('sPhone').value, Address: $('sAddr').value, Classes: $('sCls').value, SessionStartMonth: $('sSM').value }));
+    toast('\u{2705} Saved'); renderShell(); render(); } catch (e) { toast(e.message); }
+}
+async function setCur() { try { await call('setCurrent', { Name: S.session }); S.settings.CurrentSession = S.session; toast('Current session: ' + S.session); render(); } catch (e) { toast(e.message); } }
+async function chPw() { const n = $('sPw').value; try { await call('changePassword', { New: n }); S.pw = n; store('cc_pw', n); toast('\u{1f511} Password changed'); $('sPw').value = ''; } catch (e) { toast(e.message); } }
+
+const VIEWS = { dash: vDash, students: vStudents, bulk: vBulk, fee: vFee, due: vDue, notes: vNotes, year: vYear, settings: vSettings };
+
+// ================= Public notes page for students =================
+async function publicNotes() {
+  const pv = $('publicView'); pv.hidden = false;
+  pv.innerHTML = '<main><div class="card">Loading...</div></main>';
+  try {
+    const d = await call('publicNotes');
+    const cs = String(d.classes).split(',').map(x => x.trim()).filter(Boolean);
+    const all = cs.concat([...new Set(d.notes.map(n => n.Class))].filter(c => !cs.includes(c)));
+    const opts = all.filter(c => d.notes.some(n => n.Class === c));
+    const show = c => d.notes.filter(n => !c || n.Class === c).slice().reverse()
+      .map(n => `<tr>${td('', `\u{1f4c4} <a href="${esc(n.URL)}" target="_blank"><b>${esc(n.Title)}</b></a><div class="mu">${esc(clsName(n.Class))} \u{2022} ${esc(n.Date)}</div>`, 'full')}</tr>`).join('') || '<tr><td class="full mu">No notes</td></tr>';
+    pv.innerHTML = `<div style="background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;padding:22px 18px"><div style="max-width:900px;margin:auto">
+        <div style="font-size:30px">\u{1f4da}</div><h2 style="margin:4px 0 0">${esc(d.center)}</h2><div style="opacity:.9">Notes \u{2022} Session ${esc(d.session)}</div></div></div>
+      <main style="max-width:900px"><div class="card"><label>Choose your class</label><select onchange="document.getElementById('pnT').innerHTML=window._show(this.value)"><option value="">All classes</option>${opts.map(c => `<option value="${esc(c)}">${esc(clsName(c))}</option>`).join('')}</select></div>
+      <div class="card"><div class="tw"><table class="rt" id="pnT">${show('')}</table></div></div></main>`;
+    window._show = show;
+  } catch (e) { pv.innerHTML = '<main><div class="card">Error: ' + esc(e.message) + '</div></main>'; }
+}
+
+// ================= Licence =================
+const RS = { notfound: 'This licence code was not found.', expired: 'Your licence has expired.', blocked: 'This licence has been stopped.', noserver: 'This licence is not set up yet.', nocode: 'Enter your licence code.' };
+function contactHTML(ct) {
+  if (!ct || !ct.phone) return '';
+  const msg = 'Hello, I need help with my Coaching Center app licence' + (S.licCode ? ' (' + S.licCode + ')' : '') + '.';
+  return `<p class="mu" style="margin:0 0 8px">Contact ${esc(ct.name || '')}: <b>${esc(ct.phone)}</b></p>
+    <a class="btn wa" target="_blank" href="${esc(waLink(ct.phone, msg))}" style="padding:10px 16px">WhatsApp</a>
+    <a class="btn sms" target="_blank" href="tel:${esc(ct.phone)}" style="padding:10px 16px">Call</a>`;
+}
+function showGate(reason, lic) {
+  $('login').hidden = true; $('app').hidden = true; $('publicView').hidden = true; $('gate').hidden = false;
+  const renew = reason === 'expired' || reason === 'blocked';
+  $('gateTitle').textContent = renew ? 'Renew your licence' : 'Activate app';
+  $('gateMsg').textContent = (RS[reason] || reason || '') + (lic && lic.expiry && reason === 'expired' ? ' (ended ' + lic.expiry + ')' : '');
+  $('gateForm').hidden = renew;
+  $('gateContact').innerHTML = contactHTML(lic && lic.contact);
+}
+async function checkLicence(code) {
+  const url = LICENSE_URL + '?c=' + encodeURIComponent(code);
+  try {
+    const r = await fetch(url, { redirect: 'follow' }).then(x => x.json());
+    store('cc_lic', JSON.stringify(Object.assign({ checked: ym() + '-' + String(new Date().getDate()).padStart(2, '0') }, r)));
+    return r;
+  } catch (e) {
+    // Licence server unreachable: use the last good answer if it has not expired
+    let old = null; try { old = JSON.parse(load('cc_lic') || 'null'); } catch (x) {}
+    const today = new Date().toISOString().slice(0, 10);
+    if (old && old.ok && old.code === code && (!old.expiry || old.expiry >= today)) return old;
+    throw new Error(navigator.onLine ? 'Cannot reach the licence server. Try again.' : 'No internet connection.');
+  }
+}
+async function activate() {
+  const code = $('licCode').value.trim().toUpperCase(); if (!code) return;
+  await openWithCode(code);
+}
+async function openWithCode(code) {
+  S.licCode = code;
+  $('busy').style.display = 'block';
+  let lic;
+  try { lic = await checkLicence(code); } catch (e) { $('busy').style.display = 'none'; showGate('', null); $('gateMsg').textContent = e.message; $('licCode').value = code; return; }
+  $('busy').style.display = 'none';
+  if (!lic.ok) { if (lic.reason === 'notfound') store('cc_code', null); showGate(lic.reason, lic); $('licCode').value = code; return; }
+  S.lic = lic; S.server = lic.server; store('cc_code', code);
+  if (QS.get('c') !== code) { try { history.replaceState(null, '', location.pathname + '?c=' + encodeURIComponent(code) + (MODE ? '&p=' + MODE : '')); } catch (e) {} }
+  $('gate').hidden = true;
+  if (lic.center) { $('loginCenter').textContent = lic.center; document.title = lic.center; }
+  if (MODE === 'notes') return publicNotes();
+  const p = load('cc_pw');
+  if (p) { login(p); setTimeout(() => { if ($('app').hidden) $('login').hidden = false; }, 15000); } else $('login').hidden = false;
+}
+function licBanner() {
+  if (!S.lic || !S.lic.expiry) return '';
+  const days = Math.ceil((new Date(S.lic.expiry + 'T23:59:59') - new Date()) / 86400000);
+  if (days > 15) return '';
+  return `<div class="card" style="background:#fff7ed;border-color:#fed7aa"><b>Licence ends on ${esc(S.lic.expiry)}</b> (${days} day${days === 1 ? '' : 's'} left). Please renew to keep using the app.<div style="margin-top:8px">${contactHTML(S.lic.contact)}</div></div>`;
+}
+function start() {
+  if (/PASTE_YOUR/.test(LICENSE_URL)) { showGate('', null); $('gateMsg').textContent = 'Setup needed: put your licence server link in index.html (LICENSE_URL).'; $('gateForm').hidden = true; return; }
+  const code = (QS.get('c') || load('cc_code') || '').trim().toUpperCase();
+  if (code) openWithCode(code); else showGate('nocode', null);
+}
+
+// ================= Start =================
+$('themeName1').textContent = '\u{1f3a8} ' + THEME[0];
+start();
+if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('sw.js'); } catch (e) {} }
+</script>
+</body>
+</html>
