@@ -752,6 +752,7 @@ function vSettings() {
       <option value="weekly">Every Sunday night</option><option value="daily">Every night</option><option value="off">Off</option></select></div></div>
     <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="grn" onclick="backupNow()">Backup now</button><button class="sec" onclick="downloadExcel()">Download Excel</button></div>
     <div id="bkList" class="mu" style="margin-top:12px">Loading backups...</div></div>
+   ${installCard()}
    <div class="card"><h3>Help &amp; support</h3><p class="mu" style="margin-top:0">Need help, a new feature or your licence renewed? Contact us.</p>${contactHTML(S.lic && S.lic.contact)}
     <p class="mu" style="margin-bottom:0">App version 1.2${S.lic && S.lic.expiry && S.lic.expiry < '2099' ? ' \u{b7} Licence valid till ' + esc(S.lic.expiry) : ''}</p></div>
    <div class="card"><h3>Today's theme</h3><p class="mu" style="margin:0">\u{1f3a8} ${esc(THEME[0])} \u{2014} the colours change automatically every day of the week.</p></div>
@@ -1265,7 +1266,7 @@ function startCard() {
     ${step(1, !noName, 'Set your centre name, phone and classes', `<button class="sm" onclick="go('settings')">Settings</button>`)}
     ${step(2, S.students.length > 0, 'Add your students (many at once)', `<button class="sm" onclick="bulkStart()">Add</button>`)}
     ${step(3, S.payments.length > 0, 'Collect a fee and send the receipt on WhatsApp', `<button class="sm" onclick="go('fee')">Fees</button>`)}
-    ${step(4, false, 'Install on your phone: Chrome \u{22ee} \u{2192} Add to Home screen', '')}
+    ${step(4, isStandalone(), 'Install on your phone', isStandalone() ? '' : `<button class="sm" onclick="installApp()">Install</button>`)}
     <div style="text-align:right"><button class="sm ghost mu" onclick="store('cc_hidestart','1');render()">Hide this</button></div></div>`;
 }
 
@@ -1404,6 +1405,23 @@ function start() {
 // ================= Start =================
 $('themeName1').textContent = '\u{1f3a8} ' + THEME[0];
 try { history.replaceState({ tab: 'dash' }, '', location.pathname + location.search); } catch (e) {}
+// ===== Install as an app (Android Chrome / Edge / desktop) =====
+window._inst = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window._inst = e; try { if (S.tab === 'settings' || S.tab === 'dash') render(); } catch (x) {} });
+window.addEventListener('appinstalled', () => { window._inst = null; toast('\u{2705} App installed'); });
+const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+async function installApp() {
+  if (window._inst) { window._inst.prompt(); try { await window._inst.userChoice; } catch (e) {} window._inst = null; render(); return; }
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  openModal('Install on this phone', ios
+    ? '<p>In <b>Safari</b>: tap the <b>Share</b> button (square with arrow) \u{2192} <b>Add to Home Screen</b> \u{2192} <b>Add</b>.</p>'
+    : '<p>In <b>Chrome</b>: tap the <b>\u{22ee}</b> menu (top right) \u{2192} <b>Install app</b> or <b>Add to Home screen</b> \u{2192} <b>Install</b>.</p><p class="mu">The app icon will appear on your home screen and open full-screen like a normal app.</p>',
+    '<button class="sec" onclick="closeModal()">OK</button>');
+}
+function installCard() {
+  if (isStandalone()) return '';
+  return `<div class="card"><h3>Install on this phone</h3><p class="mu" style="margin-top:0">Put the app on your home screen \u{2014} opens full-screen, no browser needed.</p><button onclick="installApp()">\u{1f4f2} Install app</button></div>`;
+}
 start();
 if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('sw.js'); } catch (e) {} }
 </script>
