@@ -245,8 +245,9 @@ const MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','D
 const ACTIVE = 'Active', INACTIVE = 'Inactive';
 const AV = ['#6366f1','#10b981','#f43f5e','#f59e0b','#8b5cf6','#06b6d4','#ec4899','#14b8a6'];
 const S = { pw:'', settings:{}, sessions:[], session:'', students:[], payments:[], notes:[], paid:{}, url:'', tab:'dash',
-            f:{cls:'', q:'', st:ACTIVE}, fee:{cls:'', id:'', sel:new Set()}, due:{cls:'', mode:'due'}, bulk:null };
-const TABS = [['dash','\u{1f4ca}','Dashboard'],['students','\u{1f468}\u{200d}\u{1f393}','Students'],['fee','\u{1f4b0}','Fee Collection'],['due','\u{1f514}','Dues & Messages'],
+            f:{cls:'', q:'', st:ACTIVE}, fee:{cls:'', id:'', sel:new Set()}, due:{cls:'', mode:'due'}, bulk:null, exams:[],
+            at:{cls:'', date:'', cur:{}, all:{}, loadedKey:'', saved:false, per:'this'}, ex:{cls:'', id:''} };
+const TABS = [['dash','\u{1f4ca}','Dashboard'],['students','\u{1f468}\u{200d}\u{1f393}','Students'],['fee','\u{1f4b0}','Fee Collection'],['due','\u{1f514}','Dues & Messages'],['attdash','\u{1f4c8}','Attendance Dashboard'],['att','\u{1f4cb}','Take Attendance'],['exam','\u{1f3c6}','Exams & Marks'],
               ['notes','\u{1f4da}','Notes (PDF)'],['year','\u{1f393}','New Year'],['settings','\u{2699}\u{fe0f}','Settings']];
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -370,7 +371,7 @@ async function login(saved) {
 function logout() { store('cc_pw', null); location.reload(); }
 async function loadData() {
   const d = await call('data', { Session: S.session });
-  S.students = d.students; S.payments = d.payments; S.notes = d.notes;
+  S.students = d.students; S.payments = d.payments; S.notes = d.notes; S.exams = d.exams || []; S.at.all = {}; S.at.loadedKey = ''; S.at.allLoaded = false;
   buildIndex(); renderShell(); render();
 }
 async function changeSession(v) { S.session = v; S.fee = { cls:'', id:'', sel:new Set() }; toggleSide(false); try { await loadData(); toast('Showing session ' + v); } catch (e) { toast(e.message); } }
@@ -379,8 +380,8 @@ function renderShell() {
   $('themeName2').textContent = '\u{1f3a8} ' + THEME[0];
   $('todayTxt').textContent = new Date().toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' });
   $('sessSel').innerHTML = S.sessions.map(s => `<option ${s === S.session ? 'selected' : ''}>${esc(s)}</option>`).join('');
-  $('tabs').innerHTML = TABS.map(([k, ic, t]) => `<button class="${k === S.tab || (k === 'students' && S.tab === 'bulk') ? 'on' : ''}" onclick="go('${k}')"><span class="ic">${ic}</span>${t}</button>`).join('');
-  const t = TABS.find(x => x[0] === S.tab) || ['bulk', '\u{1f4dd}', 'Add Many Students'];
+  $('tabs').innerHTML = TABS.map(([k, ic, t]) => `<button class="${k === S.tab || (k === 'students' && S.tab === 'bulk') || (k === 'exam' && S.tab === 'marks') ? 'on' : ''}" onclick="go('${k}')"><span class="ic">${ic}</span>${t}</button>`).join('');
+  const t = TABS.find(x => x[0] === S.tab) || ({ bulk: ['bulk', '\u{1f4dd}', 'Add Many Students'], marks: ['marks', '\u{270f}\u{fe0f}', 'Enter Marks'] })[S.tab] || ['', '', ''];
   $('pageTitle').textContent = t[1] + '  ' + t[2];
   $('sessChip').textContent = (S.lic && S.lic.demo ? 'DEMO \u{b7} ' : '') + 'Session ' + S.session;
   $('backBtn').hidden = (S.tab === 'dash');
@@ -736,6 +737,10 @@ function vSettings() {
     <p class="mu">Numbers show as "Class 5". You can also use names, e.g. 5,6,7,8,9,10,11 Science,11 Arts,12</p>
     <div class="row keep" style="margin-top:6px"><div><label>Messages to guardians in</label><select id="sLang">
       <option value="en" ${st.MsgLang !== 'bn' ? 'selected' : ''}>English</option><option value="bn" ${st.MsgLang === 'bn' ? 'selected' : ''}>\u{9ac}\u{9be}\u{982}\u{9b2}\u{9be} (Bengali)</option></select></div></div></div>
+   <div class="card"><h3>Class days</h3><p class="mu" style="margin-top:0">Tick the days each class meets. The Attendance page then shows today's classes first.</p>
+    <div class="tw"><table><tr class="hd"><th>Class</th>${WD.map(d => `<th style="text-align:center">${d}</th>`).join('')}</tr>
+    ${classes().map(c => `<tr><td><b>${esc(clsName(c))}</b></td>${WD.map((d, i) => `<td style="text-align:center"><input type="checkbox" class="cd" data-c="${esc(c)}" data-d="${i}" ${daysOf(c).indexOf(i) > -1 ? 'checked' : ''} style="width:20px;height:20px"></td>`).join('')}</tr>`).join('')}</table></div>
+    <p class="mu" style="margin-bottom:0">Press <b>Save Settings</b> at the bottom after ticking.</p></div>
    <div class="card"><h3>Current session</h3><p class="mu" style="margin-top:0">Session shown first when the app opens: <b>${esc(st.CurrentSession)}</b></p>
     <button class="sec" onclick="setCur()">Make ${esc(S.session)} the current session</button></div>
    <div class="card"><h3>Change password</h3><div class="row"><div><input id="sPw" type="password" placeholder="New password"></div>
@@ -782,13 +787,13 @@ async function restoreBackup(id, date) {
   try { toast('Restoring...', 15000); const r = await call('restoreBackup', { Id: id }); toast('Restored: ' + date, 5000); S.tab = 'dash'; await login(S.pw); } catch (e) { toast(e.message, 6000); }
 }
 async function saveSet() {
-  try { S.settings = Object.assign(S.settings, await call('saveSettings', { CenterName: $('sName').value, CenterPhone: $('sPhone').value, Address: $('sAddr').value, Classes: $('sCls').value, SessionStartMonth: $('sSM').value, MsgLang: $('sLang').value }));
+  try { S.settings = Object.assign(S.settings, await call('saveSettings', { CenterName: $('sName').value, CenterPhone: $('sPhone').value, Address: $('sAddr').value, Classes: $('sCls').value, SessionStartMonth: $('sSM').value, MsgLang: $('sLang').value, ClassDays: (() => { const o = {}; document.querySelectorAll('input.cd').forEach(b => { if (b.checked) (o[b.dataset.c] = o[b.dataset.c] || []).push(+b.dataset.d); }); return JSON.stringify(o); })() }));
     toast('\u{2705} Saved'); renderShell(); render(); } catch (e) { toast(e.message); }
 }
 async function setCur() { try { await call('setCurrent', { Name: S.session }); S.settings.CurrentSession = S.session; toast('Current session: ' + S.session); render(); } catch (e) { toast(e.message); } }
 async function chPw() { const n = $('sPw').value; try { await call('changePassword', { New: n }); S.pw = n; store('cc_pw', n); toast('\u{1f511} Password changed'); $('sPw').value = ''; } catch (e) { toast(e.message); } }
 
-const VIEWS = { dash: vDash, students: vStudents, bulk: vBulk, fee: vFee, due: vDue, notes: vNotes, year: vYear, settings: vSettings };
+const VIEWS = { attdash: vAttDash, att: vAtt, exam: vExam, marks: vMarks, dash: vDash, students: vStudents, bulk: vBulk, fee: vFee, due: vDue, notes: vNotes, year: vYear, settings: vSettings };
 
 // ================= Public notes page for students =================
 async function publicNotes() {
@@ -809,6 +814,303 @@ async function publicNotes() {
   } catch (e) { pv.innerHTML = '<main><div class="card">Error: ' + esc(e.message) + '</div></main>'; }
 }
 
+// ================= Attendance =================
+const pad2 = n => String(n).padStart(2, '0');
+const isoOf = d => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+const isoToday = () => isoOf(new Date());
+const dmy = iso => { const [y, m, d] = String(iso).split('-'); return d + '/' + m + '/' + y; };
+const WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const WDBN = ['\u{9b0}\u{9ac}\u{9bf}','\u{9b8}\u{9cb}\u{9ae}','\u{9ae}\u{999}\u{9cd}\u{997}\u{9b2}','\u{9ac}\u{9c1}\u{9a7}','\u{9ac}\u{9c3}\u{9b9}\u{9b8}\u{9cd}\u{9aa}\u{9a4}\u{9bf}','\u{9b6}\u{9c1}\u{995}\u{9cd}\u{9b0}','\u{9b6}\u{9a8}\u{9bf}'];
+function classDays() { try { return JSON.parse(S.settings.ClassDays || '{}') || {}; } catch (e) { return {}; } }
+function daysOf(cls) { return (classDays()[cls] || []).map(Number); }
+function classesOn(dow) { return classes().filter(c => daysOf(c).indexOf(dow) > -1); }
+function attStudents(cls) { return sortStu(S.students.filter(s => s.Status === ACTIVE && s.Class === cls)); }
+function periodRange(per) {
+  const d = new Date((S.at.date || isoToday()) + 'T12:00:00'), y = d.getFullYear(), m = d.getMonth();
+  const a = new Date(y, per === 'this' ? m : m - 1, 1), b = new Date(y, per === 'last' ? m : m + 1, 0);
+  const ml = x => MN[x.getMonth()] + ' ' + x.getFullYear(), mb = x => BMN[x.getMonth()] + ' ' + x.getFullYear();
+  return { from: isoOf(a), to: isoOf(b), label: per === '2m' ? ml(a) + ' \u{2013} ' + ml(b) : ml(a), labelBn: per === '2m' ? mb(a) + ' \u{2013} ' + mb(b) : mb(a) };
+}
+function periodRecs(cls, per) {
+  const r = periodRange(per);
+  return (S.at.all[cls] || []).filter(x => x.Date >= r.from && x.Date <= r.to).sort((a, b) => a.Date < b.Date ? -1 : 1);
+}
+function absStat(s, recs) { const held = recs.filter(r => r.Data && r.Data[s.ID]), ab = held.filter(r => r.Data[s.ID] === 'A'), late = held.filter(r => r.Data[s.ID] === 'L'); return { held, ab, late, pct: held.length ? Math.round((held.length - ab.length) / held.length * 100) : 0 }; }
+function vAtt() {
+  const A = S.at;
+  if (!A.date) A.date = isoToday();
+  if (!A.cls) A.cls = classesOn(new Date().getDay())[0] || S.f.cls || classes()[0] || '';
+  const list = attStudents(A.cls), key = A.cls + '|' + A.date, ready = A.loadedKey === key;
+  const dd = new Date(A.date + 'T12:00:00'), dow = dd.getDay(), sched = daysOf(A.cls), todayCls = classesOn(new Date().getDay());
+  const btn = (id, v, lab, col) => `<button class="sm" style="min-width:42px;${(A.cur[id] || 'P') === v ? `background:${col};color:#fff` : 'background:#eef1f6;color:#475569;box-shadow:none'}" onclick="attSet('${id}','${v}')">${lab}</button>`;
+  const rows = list.map(s => `<tr>${td('', `<div class="who">${avatar(s.Name)}<div><b>${esc(s.Name)}</b><div class="mu">${s.Roll ? 'Roll ' + esc(s.Roll) : ''}</div></div></div>`, 'full')}
+      ${td('', `<div style="display:flex;gap:6px;justify-content:flex-end">${btn(s.ID, 'P', 'P', '#16a34a')}${btn(s.ID, 'A', 'A', '#dc2626')}${btn(s.ID, 'L', 'Late', '#d97706')}</div>`)}</tr>`).join('');
+  const recs = periodRecs(A.cls, A.per), pr = periodRange(A.per);
+  const mRows = list.map(s => { const x = absStat(s, recs);
+    return `<tr>${td('', `<b>${esc(s.Name)}</b>`, 'full')}${td('Classes', x.held.length)}${td('Present', x.held.length - x.ab.length)}
+      ${td('Absent', x.ab.length ? `<span class="tag tr">${x.ab.length}</span><div class="mu">${x.ab.map(r => dmy(r.Date).slice(0, 5)).join(', ')}</div>` : '0')}${td('Late', x.late.length)}
+      ${td('%', `<b style="color:${x.pct >= 75 ? 'var(--g)' : 'var(--r)'}">${x.held.length ? x.pct + '%' : '\u{2014}'}</b>`)}</tr>`; }).join('');
+  const cnt = v => list.filter(s => (A.cur[s.ID] || 'P') === v).length;
+  const offDay = sched.length && sched.indexOf(dow) < 0;
+  return `<div class="card">
+      ${todayCls.length ? `<div style="margin-bottom:10px"><span class="mu">Today's classes:</span> ${todayCls.map(c => `<button class="sm ${c === A.cls && A.date === isoToday() ? '' : 'sec'}" onclick="S.at.cls='${esc(c)}';S.at.date=isoToday();S.at.loadedKey='';render()">${esc(clsName(c))}</button>`).join(' ')}</div>` : ''}
+      <div class="row keep">
+      <div><label>Class</label><select onchange="S.at.cls=this.value;S.at.loadedKey='';render()">${clsOptions(A.cls)}</select></div>
+      <div><label>Date</label><input type="date" value="${A.date}" max="${isoToday()}" onchange="if(this.value){S.at.date=this.value;S.at.loadedKey='';render()}"></div></div>
+      <p class="mu" style="margin:8px 0 0">${WD[dow]}, ${dmy(A.date)}${sched.length ? ' \u{b7} class days: ' + sched.map(d => WD[d]).join(', ') : ' \u{b7} <a href="#" onclick="go(\'settings\');return false">set class days</a>'} \u{2014} ${ready ? (A.saved ? '<span class="tag tg">Saved</span> you can change and save again' : 'Not taken yet. Everyone starts as Present \u{2014} tap A for absent.') : 'Loading\u{2026}'}</p>
+      ${offDay ? `<p style="margin:6px 0 0;color:#b45309;font-size:13px">\u{26a0}\u{fe0f} ${esc(clsName(A.cls))} is not usually held on ${WD[dow]}. Save only if there was a class.</p>` : ''}</div>
+   <div class="card"><h3>${esc(clsName(A.cls))} \u{2014} ${plural(list.length, 'student')}</h3>
+     <div style="margin:-4px 0 8px"><button class="sm sec" onclick="attAll('P')">All present</button> <button class="sm sec" onclick="attAll('A')">All absent</button></div>
+     <div class="tw"><table class="rt"><tr class="hd"><th>Student</th><th style="text-align:right">Present / Absent / Late</th></tr>${rows || '<tr><td class="full mu">No active students in this class</td></tr>'}</table></div></div>
+   <details class="card fold" ${load('cc_attm') === '1' ? 'open' : ''} ontoggle="store('cc_attm', this.open ? '1' : '0')">
+     <summary><h3>Attendance report</h3><span class="mu foldhint"></span></summary>
+     <div class="row keep" style="margin-top:10px"><div><label>Period</label><select onchange="S.at.per=this.value;render()">
+       <option value="this" ${A.per === 'this' ? 'selected' : ''}>This month</option><option value="last" ${A.per === 'last' ? 'selected' : ''}>Last month</option><option value="2m" ${A.per === '2m' ? 'selected' : ''}>Last 2 months</option></select></div></div>
+     <p class="mu">${esc(pr.label)} \u{b7} ${plural(recs.length, 'class')} held. Only days when attendance was taken are counted.</p>
+     <div class="tw"><table class="rt"><tr class="hd"><th>Student</th><th>Classes</th><th>Present</th><th>Absent (dates)</th><th>Late</th><th>%</th></tr>${mRows}</table></div>
+     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="sm" onclick="attPeriodMsgs()">\u{1f4ac} Send to guardians</button><button class="sm sec" onclick="attPrint()">\u{1f5a8}\u{fe0f} Print</button></div></details>
+   <div class="actionbar"><span class="grow">P ${cnt('P')} \u{b7} A ${cnt('A')} \u{b7} Late ${cnt('L')}</span><button class="grn" onclick="attSave()" ${ready && list.length ? '' : 'disabled'}>\u{1f4be} Save attendance</button></div>`;
+}
+AFTER.att = () => { if (S.at.loadedKey !== S.at.cls + '|' + S.at.date) attLoad(); };
+async function attLoad() {
+  const A = S.at, cls = A.cls, key = cls + '|' + A.date;
+  try {
+    if (!A.all[cls]) A.all[cls] = await call('attendanceGet', { Session: S.session, Class: cls });
+    if (A.cls + '|' + A.date !== key) return;
+    const rec = A.all[cls].find(r => r.Date === A.date);
+    A.cur = rec ? Object.assign({}, rec.Data) : {}; A.saved = !!rec; A.loadedKey = key;
+    if (S.tab === 'att') { const y = window.scrollY; render(); window.scrollTo(0, y); }
+  } catch (e) { toast(e.message, 5000); }
+}
+function attSet(id, v) { S.at.cur[id] = v; const y = window.scrollY; render(); window.scrollTo(0, y); }
+function attAll(v) { attStudents(S.at.cls).forEach(s => S.at.cur[s.ID] = v); const y = window.scrollY; render(); window.scrollTo(0, y); }
+async function attSave() {
+  const A = S.at, list = attStudents(A.cls), data = {};
+  list.forEach(s => data[s.ID] = A.cur[s.ID] || 'P');
+  try {
+    await call('saveAttendance', { Session: S.session, Class: A.cls, Date: A.date, Data: data });
+    const arr = A.all[A.cls] || (A.all[A.cls] = []);
+    const i = arr.findIndex(r => r.Date === A.date), rec = { Date: A.date, Class: A.cls, Data: data };
+    if (i > -1) arr[i] = rec; else arr.push(rec);
+    A.cur = Object.assign({}, data); A.saved = true;
+    const absent = list.filter(s => data[s.ID] === 'A');
+    toast('\u{2705} Attendance saved'); render();
+    if (absent.length) openModal('Absent today \u{2014} ' + absent.length, `<p class="mu" style="margin-top:0">Send a message to the guardians:</p>` +
+      absent.map(s => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd)"><b>${esc(s.Name)}</b><span>${msgButtons(s, msgAbsent(s, A.date))}</span></div>`).join(''), `<button class="sec" onclick="closeModal()">Done</button>`);
+  } catch (e) { toast(e.message, 5000); }
+}
+function msgAbsent(st, iso) {
+  const c = S.settings.CenterName;
+  if (isBn()) return `\u{9a8}\u{9ae}\u{9b8}\u{9cd}\u{995}\u{9be}\u{9b0} ${st.Guardian || '\u{985}\u{9ad}\u{9bf}\u{9ad}\u{9be}\u{9ac}\u{995}'},\n\u{986}\u{99c} ${dmy(iso)} ${st.Name} (${clsBn(st.Class)}) ${c}-\u{98f} \u{985}\u{9a8}\u{9c1}\u{9aa}\u{9b8}\u{9cd}\u{9a5}\u{9bf}\u{9a4} \u{99b}\u{9bf}\u{9b2}\u{964}\n\u{9a8}\u{9bf}\u{9af}\u{9bc}\u{9ae}\u{9bf}\u{9a4} \u{989}\u{9aa}\u{9b8}\u{9cd}\u{9a5}\u{9bf}\u{9a4}\u{9bf}\u{9b0} \u{985}\u{9a8}\u{9c1}\u{9b0}\u{9cb}\u{9a7} \u{9b0}\u{987}\u{9b2}\u{964} \u{9a7}\u{9a8}\u{9cd}\u{9af}\u{9ac}\u{9be}\u{9a6}\u{964}\n\u{2014} ${c}`;
+  return `Dear ${st.Guardian || 'Guardian'},\n${st.Name} (${clsName(st.Class)}) was absent at ${c} today, ${dmy(iso)}.\nKindly ensure regular attendance. Thank you.\n\u{2014} ${c}`;
+}
+function msgPeriodAbs(st, recs, pr) {
+  const x = absStat(st, recs), c = S.settings.CenterName, dates = x.ab.map(r => dmy(r.Date)).join(', ');
+  if (isBn()) return `\u{9a8}\u{9ae}\u{9b8}\u{9cd}\u{995}\u{9be}\u{9b0} ${st.Guardian || '\u{985}\u{9ad}\u{9bf}\u{9ad}\u{9be}\u{9ac}\u{995}'},\n${pr.labelBn}-\u{98f} ${st.Name} (${clsBn(st.Class)})-\u{98f}\u{9b0} \u{989}\u{9aa}\u{9b8}\u{9cd}\u{9a5}\u{9bf}\u{9a4}\u{9bf}:\n\u{9ae}\u{9cb}\u{99f} \u{995}\u{9cd}\u{9b2}\u{9be}\u{9b8}: ${x.held.length}\n\u{989}\u{9aa}\u{9b8}\u{9cd}\u{9a5}\u{9bf}\u{9a4}: ${x.held.length - x.ab.length}\n\u{985}\u{9a8}\u{9c1}\u{9aa}\u{9b8}\u{9cd}\u{9a5}\u{9bf}\u{9a4}: ${x.ab.length}` + (x.ab.length ? ` (${dates})` : '') + (x.late.length ? `\n\u{9a6}\u{9c7}\u{9b0}\u{9bf}\u{9a4}\u{9c7}: ${x.late.length}` : '') + `\n\u{989}\u{9aa}\u{9b8}\u{9cd}\u{9a5}\u{9bf}\u{9a4}\u{9bf}\u{9b0} \u{9b9}\u{9be}\u{9b0}: ${x.pct}%\n\u{9a7}\u{9a8}\u{9cd}\u{9af}\u{9ac}\u{9be}\u{9a6}\u{964}\n\u{2014} ${c}`;
+  return `Dear ${st.Guardian || 'Guardian'},\nAttendance of ${st.Name} (${clsName(st.Class)}) for ${pr.label}:\nClasses held: ${x.held.length}\nPresent: ${x.held.length - x.ab.length}\nAbsent: ${x.ab.length}` + (x.ab.length ? ` (${dates})` : '') + (x.late.length ? `\nLate: ${x.late.length}` : '') + `\nAttendance: ${x.pct}%\nThank you.\n\u{2014} ${c}`;
+}
+function attPeriodMsgs() {
+  const A = S.at, recs = periodRecs(A.cls, A.per), pr = periodRange(A.per), list = attStudents(A.cls);
+  if (!recs.length) return toast('No attendance taken in this period yet');
+  openModal(esc(pr.label) + ' \u{2014} ' + esc(clsName(A.cls)), `<p class="mu" style="margin-top:0">Tap WhatsApp or SMS for each guardian. Sent buttons turn faded.</p>` + list.map(s => {
+    const x = absStat(s, recs);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd)"><div><b>${esc(s.Name)}</b><div class="mu">Absent ${x.ab.length} of ${x.held.length} \u{b7} ${x.pct}%</div></div><span>${msgButtons(s, msgPeriodAbs(s, recs, pr))}</span></div>`;
+  }).join(''), `<button class="sec" onclick="closeModal()">Done</button>`);
+}
+function attPrint() {
+  const A = S.at, recs = periodRecs(A.cls, A.per), pr = periodRange(A.per), list = attStudents(A.cls);
+  $('printArea').innerHTML = `<div class="rc" style="max-width:none"><div style="text-align:center"><b style="font-size:18px">${esc(S.settings.CenterName)}</b><div>Attendance \u{2014} ${esc(clsName(A.cls))} \u{2014} ${esc(pr.label)}</div></div>
+    <table style="width:100%;margin-top:10px;font-size:11px"><tr><th>Name</th>${recs.map(r => `<th>${dmy(r.Date).slice(0, 5)}</th>`).join('')}<th>Absent</th><th>%</th></tr>
+    ${list.map(s => { const x = absStat(s, recs);
+      return `<tr><td>${esc(s.Name)}</td>${recs.map(r => `<td style="text-align:center">${(r.Data && r.Data[s.ID]) || ''}</td>`).join('')}<td style="text-align:center">${x.ab.length}</td><td style="text-align:center">${x.held.length ? x.pct + '%' : ''}</td></tr>`; }).join('')}</table></div>`;
+  window.print();
+}
+
+// ================= Attendance dashboard =================
+async function attLoadAll() {
+  try {
+    const rows = await call('attendanceGet', { Session: S.session });
+    const by = {}; rows.forEach(r => (by[r.Class] = by[r.Class] || []).push(r));
+    S.at.all = by; S.at.allLoaded = true; S.at.loadedKey = '';
+    if (S.tab === 'attdash') render();
+  } catch (e) { toast(e.message, 5000); }
+}
+AFTER.attdash = () => { if (!S.at.allLoaded) attLoadAll(); };
+function takeAtt(cls) { S.at.cls = cls; S.at.date = isoToday(); S.at.loadedKey = ''; go('att'); }
+function vAttDash() {
+  const A = S.at;
+  if (!A.allLoaded) return `<div class="card mu" style="text-align:center;padding:30px">Loading attendance\u{2026}</div>`;
+  const pr = periodRange(A.per), today = isoToday(), dow = new Date().getDay();
+  const cls = classes().filter(c => attStudents(c).length);
+  let held = 0, sumPct = 0, nPct = 0; const low = [];
+  const clsRows = cls.map(c => {
+    const recs = periodRecs(c, A.per); held += recs.length;
+    const st = attStudents(c).map(s => ({ s, x: absStat(s, recs) })).filter(o => o.x.held.length);
+    st.forEach(o => { sumPct += o.x.pct; nPct++; if (o.x.pct < 75) low.push(o); });
+    const avg = st.length ? Math.round(st.reduce((a, o) => a + o.x.pct, 0) / st.length) : 0;
+    const abs = st.reduce((a, o) => a + o.x.ab.length, 0);
+    return `<tr>${td('Class', '<b>' + esc(clsName(c)) + '</b>')}${td('Days', esc(daysOf(c).map(d => WD[d]).join(', ') || '\u{2014}'))}${td('Classes held', recs.length)}${td('Absences', abs)}
+      ${td('Average', recs.length ? `<b style="color:${avg >= 75 ? 'var(--g)' : 'var(--r)'}">${avg}%</b>` : '\u{2014}')}</tr>`;
+  }).join('');
+  const todayCls = cls.filter(c => daysOf(c).indexOf(dow) > -1 || (A.all[c] || []).some(r => r.Date === today));
+  const todayRows = todayCls.map(c => {
+    const rec = (A.all[c] || []).find(r => r.Date === today);
+    const v = rec ? Object.keys(rec.Data).map(k => rec.Data[k]) : [];
+    return `<tr>${td('Class', '<b>' + esc(clsName(c)) + '</b>')}${td('Status', rec ? '<span class="tag tg">Taken</span>' : '<span class="tag tr">Not taken</span>')}
+      ${td('Present', rec ? v.filter(x => x !== 'A').length : '\u{2014}')}${td('Absent', rec ? v.filter(x => x === 'A').length : '\u{2014}')}
+      ${td('', `<button class="sm ${rec ? 'sec' : ''}" onclick="takeAtt('${esc(c)}')">${rec ? 'Open' : 'Take now'}</button>`)}</tr>`;
+  }).join('');
+  const taken = todayCls.filter(c => (A.all[c] || []).some(r => r.Date === today)).length;
+  low.sort((a, b) => a.x.pct - b.x.pct);
+  const lowRows = low.map(o => `<tr>${td('', `<div class="who">${avatar(o.s.Name)}<div><b>${esc(o.s.Name)}</b><div class="mu">${esc(clsName(o.s.Class))}</div></div></div>`, 'full')}
+      ${td('Absent', o.x.ab.length + ' of ' + o.x.held.length)}${td('Attendance', `<b style="color:var(--r)">${o.x.pct}%</b>`)}
+      ${td('', msgButtons(o.s, msgPeriodAbs(o.s, periodRecs(o.s.Class, A.per), pr)))}</tr>`).join('');
+  const avgAll = nPct ? Math.round(sumPct / nPct) : 0;
+  return `<div class="card"><div class="row keep"><div><label>Period</label><select onchange="S.at.per=this.value;render()">
+      <option value="this" ${A.per === 'this' ? 'selected' : ''}>This month</option><option value="last" ${A.per === 'last' ? 'selected' : ''}>Last month</option><option value="2m" ${A.per === '2m' ? 'selected' : ''}>Last 2 months</option></select></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="sec" onclick="S.at.allLoaded=false;render();attLoadAll()">\u{21bb} Refresh</button></div></div>
+      <p class="mu" style="margin-bottom:0">${esc(pr.label)}</p></div>
+   <div class="stats">
+     <div class="stat c1"><span class="ic">\u{1f4c5}</span><b>${taken}/${todayCls.length}</b><span>Today's classes taken</span></div>
+     <div class="stat c2"><span class="ic">\u{2705}</span><b>${nPct ? avgAll + '%' : '\u{2014}'}</b><span>Average attendance</span></div>
+     <div class="stat c3"><span class="ic">\u{1f4da}</span><b>${held}</b><span>Classes held</span></div>
+     <div class="stat c4"><span class="ic">\u{26a0}\u{fe0f}</span><b>${low.length}</b><span>Below 75%</span></div>
+   </div>
+   <div class="card"><h3>Today \u{2014} ${WD[dow]}, ${dmy(today)}</h3><div class="tw"><table class="rt">
+     <tr class="hd"><th>Class</th><th>Status</th><th>Present</th><th>Absent</th><th></th></tr>${todayRows || `<tr><td class="full mu">No class today. Set class days in <a href="#" onclick="go('settings');return false">Settings</a>.</td></tr>`}</table></div></div>
+   <div class="card"><h3>Class-wise</h3><div class="tw"><table class="rt">
+     <tr class="hd"><th>Class</th><th>Days</th><th>Classes held</th><th>Absences</th><th>Average</th></tr>${clsRows || '<tr><td class="full mu">No students yet</td></tr>'}</table></div></div>
+   <div class="card"><h3>Below 75% attendance</h3><p class="mu" style="margin-top:0">Send the attendance summary to these guardians.</p><div class="tw"><table class="rt">
+     <tr class="hd"><th>Student</th><th>Absent</th><th>Attendance</th><th></th></tr>${lowRows || '<tr><td class="full mu">Everyone is above 75% \u{1f389}</td></tr>'}</table></div></div>
+   <div class="actionbar"><span class="grow">\u{1f4c8} Attendance</span><button onclick="go('att')">\u{1f4cb} Take attendance</button></div>`;
+}
+
+// ================= Exams & marks =================
+function grade(p) { return p >= 90 ? 'A+' : p >= 80 ? 'A' : p >= 70 ? 'B+' : p >= 60 ? 'B' : p >= 50 ? 'C' : p >= 40 ? 'D' : 'F'; }
+const isAb = v => String(v).trim().toUpperCase() === 'AB';
+const hasMark = v => v !== undefined && v !== null && String(v).trim() !== '';
+function examStats(e) {
+  const vals = Object.keys(e.Marks || {}).map(k => e.Marks[k]).filter(v => hasMark(v) && !isAb(v)).map(Number).filter(v => !isNaN(v));
+  const full = Number(e.FullMarks) || 0;
+  return { n: vals.length, hi: vals.length ? Math.max(...vals) : 0, avg: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0, full };
+}
+function examById(id) { return S.exams.find(e => e.ExamID === id); }
+function vExam() {
+  const E = S.ex, list = S.exams.filter(e => !E.cls || e.Class === E.cls).slice().sort((a, b) => clsIdx(a.Class) - clsIdx(b.Class) || (b.Date || '').localeCompare(a.Date || ''));
+  const groups = [...new Set(list.map(e => e.Class))].map(c => `<div class="clsh">${esc(clsName(c))}</div><div class="tw"><table class="rt">
+    <tr class="hd"><th>Exam</th><th>Date</th><th>Full</th><th>Entered</th><th>Average</th><th></th></tr>
+    ${list.filter(e => e.Class === c).map(e => { const st = examStats(e), tot = attStudents(c).length;
+      return `<tr>${td('', `<b>${esc(e.Name)}</b>${e.Subject ? ' \u{2014} ' + esc(e.Subject) : ''}`, 'full')}${td('Date', e.Date ? dmy(e.Date) : '\u{2014}')}${td('Full', esc(e.FullMarks))}
+        ${td('Entered', st.n + ' / ' + tot)}${td('Average', st.n ? (st.avg / st.full * 100).toFixed(0) + '%' : '\u{2014}')}
+        ${td('', `<div style="text-align:right;white-space:nowrap"><button class="sm" onclick="openMarks('${e.ExamID}')">\u{270f}\u{fe0f} Marks</button> <button class="sm sec" onclick="examResult('${e.ExamID}')">Result</button> <button class="sm ghost" onclick="examForm('${e.ExamID}')">\u{22ef}</button></div>`)}</tr>`; }).join('')}</table></div>`).join('');
+  return `<div class="card"><div class="row keep"><div><label>Class</label><select onchange="S.ex.cls=this.value;render()">${clsOptions(E.cls, true)}</select></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="sec" style="white-space:nowrap" onclick="studentReport()">\u{1f4c4} Student report</button></div></div></div>
+    <div class="card"><h3>${plural(list.length, 'exam')} \u{2014} Session ${esc(S.session)}</h3>${groups || '<p class="mu">No exams yet. Press "+ New exam" to add one.</p>'}</div>
+    <div class="actionbar"><span class="grow">\u{1f3c6} Exams &amp; Marks</span><button onclick="examForm()">+ New exam</button></div>`;
+}
+function examForm(id) {
+  const e = id ? examById(id) : { Class: S.ex.cls || classes()[0], Name: '', Subject: '', Date: isoToday(), FullMarks: '' };
+  const names = [...new Set(S.exams.map(x => x.Name))], subs = [...new Set(S.exams.map(x => x.Subject).filter(Boolean))];
+  openModal(id ? 'Edit exam' : 'New exam', `<div class="row keep"><div><label>Class *</label><select id="eCls">${clsOptions(e.Class)}</select></div>
+      <div><label>Date</label><input id="eDate" type="date" value="${esc(e.Date)}"></div></div>
+    <div style="margin-top:10px"><label>Exam name *</label><input id="eName" list="eNames" value="${esc(e.Name)}" placeholder="e.g. Unit Test 1, Monthly Test - July"><datalist id="eNames">${names.map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>
+    <div class="row keep" style="margin-top:10px"><div style="flex:2"><label>Subject</label><input id="eSub" list="eSubs" value="${esc(e.Subject)}" placeholder="e.g. Maths"><datalist id="eSubs">${subs.map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>
+      <div><label>Full marks *</label><input id="eFull" type="number" inputmode="numeric" value="${esc(e.FullMarks)}"></div></div>`,
+    `${id ? `<button class="red" onclick="examDel('${id}')">Delete</button>` : ''}<button class="sec" onclick="closeModal()">Cancel</button><button onclick="examSave('${id || ''}')">\u{1f4be} Save</button>`);
+}
+async function examSave(id) {
+  const old = id ? examById(id) : null;
+  const o = { ExamID: id || '', Session: S.session, Class: $('eCls').value, Name: $('eName').value, Subject: $('eSub').value, Date: $('eDate').value, FullMarks: $('eFull').value, Marks: old ? old.Marks : {} };
+  try { const newId = await call('saveExam', o); closeModal(); toast('\u{2705} Saved'); S.ex.cls = o.Class; await loadData(); if (!id) openMarks(newId); } catch (e) { toast(e.message, 5000); }
+}
+async function examDel(id) {
+  if (!confirm('Delete this exam and all its marks?')) return;
+  try { await call('deleteExam', { ExamID: id }); closeModal(); toast('Deleted'); await loadData(); } catch (e) { toast(e.message); }
+}
+function openMarks(id) { S.ex.id = id; go('marks'); }
+function vMarks() {
+  const e = examById(S.ex.id); if (!e) return '<div class="card mu">Exam not found</div>';
+  const list = sortStu(S.students.filter(s => s.Class === e.Class && (s.Status === ACTIVE || hasMark((e.Marks || {})[s.ID]))));
+  const rows = list.map(s => { const v = (e.Marks || {})[s.ID];
+    return `<tr>${td('', `<div class="who">${avatar(s.Name)}<div><b>${esc(s.Name)}</b><div class="mu">${s.Roll ? 'Roll ' + esc(s.Roll) : ''}</div></div></div>`, 'full')}
+      ${td('Marks', `<input class="mk" data-id="${s.ID}" value="${hasMark(v) ? esc(v) : ''}" placeholder="0\u{2013}${esc(e.FullMarks)} or AB" inputmode="decimal" style="max-width:130px;text-align:center" oninput="mkCount()">`)}</tr>`; }).join('');
+  return `<div class="card"><b style="font-size:16px">${esc(e.Name)}${e.Subject ? ' \u{2014} ' + esc(e.Subject) : ''}</b>
+      <div class="mu">${esc(clsName(e.Class))} \u{b7} Full marks ${esc(e.FullMarks)}${e.Date ? ' \u{b7} ' + dmy(e.Date) : ''} \u{b7} type <b>AB</b> for absent</div></div>
+    <div class="card"><div class="tw"><table class="rt"><tr class="hd"><th>Student</th><th>Marks</th></tr>${rows || '<tr><td class="full mu">No students in this class</td></tr>'}</table></div></div>
+    <div class="actionbar"><span class="grow" id="mkC"></span><button class="sec" onclick="examForm('${e.ExamID}')">Edit</button><button class="grn" onclick="marksSave()">\u{1f4be} Save marks</button></div>`;
+}
+AFTER.marks = () => mkCount();
+function mkCount() { const all = [...document.querySelectorAll('input.mk')], n = all.filter(i => i.value.trim()).length; const el = $('mkC'); if (el) el.textContent = n + ' of ' + all.length + ' entered'; }
+async function marksSave() {
+  const e = examById(S.ex.id), full = Number(e.FullMarks), marks = {}; let bad = null;
+  document.querySelectorAll('input.mk').forEach(i => {
+    const v = i.value.trim(); if (!v) return;
+    if (isAb(v)) { marks[i.dataset.id] = 'AB'; return; }
+    const n = Number(v); if (isNaN(n) || n < 0 || n > full) { bad = bad || i; i.style.borderColor = 'var(--r)'; } else marks[i.dataset.id] = n;
+  });
+  if (bad) { bad.focus(); return toast('Marks must be between 0 and ' + full + ', or AB', 5000); }
+  try { await call('saveExam', Object.assign({}, e, { Marks: marks })); toast('\u{2705} Marks saved'); await loadData(); S.tab = 'marks'; examResult(e.ExamID); } catch (x) { toast(x.message, 5000); }
+}
+function msgResult(st, e, v, hi) {
+  const c = S.settings.CenterName, full = Number(e.FullMarks), ex = e.Name + (e.Subject ? ' \u{2014} ' + e.Subject : '');
+  if (isAb(v)) return isBn() ? `\u{9a8}\u{9ae}\u{9b8}\u{9cd}\u{995}\u{9be}\u{9b0} ${st.Guardian || '\u{985}\u{9ad}\u{9bf}\u{9ad}\u{9be}\u{9ac}\u{995}'},\n${ex} \u{9aa}\u{9b0}\u{9c0}\u{995}\u{9cd}\u{9b7}\u{9be}\u{9af}\u{9bc} ${st.Name} (${clsBn(st.Class)}) \u{985}\u{9a8}\u{9c1}\u{9aa}\u{9b8}\u{9cd}\u{9a5}\u{9bf}\u{9a4} \u{99b}\u{9bf}\u{9b2}\u{964}\n\u{2014} ${c}` : `Dear ${st.Guardian || 'Guardian'},\n${st.Name} (${clsName(st.Class)}) was absent in ${ex}.\n\u{2014} ${c}`;
+  const pct = Math.round(Number(v) / full * 100);
+  if (isBn()) return `\u{9a8}\u{9ae}\u{9b8}\u{9cd}\u{995}\u{9be}\u{9b0} ${st.Guardian || '\u{985}\u{9ad}\u{9bf}\u{9ad}\u{9be}\u{9ac}\u{995}'},\n${ex} \u{9aa}\u{9b0}\u{9c0}\u{995}\u{9cd}\u{9b7}\u{9be}\u{9af}\u{9bc} ${st.Name} (${clsBn(st.Class)}) \u{9aa}\u{9c7}\u{9af}\u{9bc}\u{9c7}\u{99b}\u{9c7} ${v}/${full} (${pct}%), \u{997}\u{9cd}\u{9b0}\u{9c7}\u{9a1} ${grade(pct)}\u{964}\n\u{995}\u{9cd}\u{9b2}\u{9be}\u{9b8}\u{9c7} \u{9b8}\u{9b0}\u{9cd}\u{9ac}\u{9cb}\u{99a}\u{9cd}\u{99a}: ${hi}/${full}\u{964}\n\u{2014} ${c}`;
+  return `Dear ${st.Guardian || 'Guardian'},\n${st.Name} (${clsName(st.Class)}) scored ${v}/${full} (${pct}%) in ${ex}, Grade ${grade(pct)}.\nClass highest: ${hi}/${full}.\n\u{2014} ${c}`;
+}
+function examResult(id) {
+  const e = examById(id); if (!e) return;
+  const full = Number(e.FullMarks), st = examStats(e);
+  const list = S.students.filter(s => s.Class === e.Class && hasMark((e.Marks || {})[s.ID]))
+    .map(s => ({ s, v: e.Marks[s.ID] })).sort((a, b) => (isAb(a.v) ? -1 : Number(a.v)) > (isAb(b.v) ? -1 : Number(b.v)) ? -1 : 1);
+  let rank = 0, last = null;
+  const rows = list.map((x, i) => { const ab = isAb(x.v), pct = ab ? 0 : Math.round(Number(x.v) / full * 100);
+    if (!ab && x.v !== last) { rank = i + 1; last = x.v; }
+    return `<tr><td>${ab ? '\u{2014}' : rank}</td><td><b>${esc(x.s.Name)}</b></td><td>${ab ? 'AB' : esc(x.v) + '/' + full}</td><td>${ab ? '' : pct + '% \u{b7} ' + grade(pct)}</td><td style="white-space:nowrap">${msgButtons(x.s, msgResult(x.s, e, x.v, st.hi))}</td></tr>`; }).join('');
+  window._resId = id;
+  openModal('Result \u{2014} ' + esc(e.Name) + (e.Subject ? ' \u{2014} ' + esc(e.Subject) : ''),
+    `<p class="mu" style="margin-top:0">${esc(clsName(e.Class))} \u{b7} Highest ${st.hi}/${full} \u{b7} Average ${st.n ? (st.avg / full * 100).toFixed(0) + '%' : '\u{2014}'} \u{b7} ${st.n} appeared</p>
+     <div class="tw"><table><tr class="hd"><th>#</th><th>Name</th><th>Marks</th><th>%</th><th></th></tr>${rows || '<tr><td colspan="5" class="mu">No marks entered yet</td></tr>'}</table></div>`,
+    `<button class="sec" onclick="resultPrint()">\u{1f5a8}\u{fe0f} Print</button><button class="sec" onclick="closeModal();openMarks('${id}')">\u{270f}\u{fe0f} Marks</button>`);
+}
+function resultPrint() {
+  const e = examById(window._resId), full = Number(e.FullMarks);
+  const list = S.students.filter(s => s.Class === e.Class && hasMark((e.Marks || {})[s.ID])).map(s => ({ s, v: e.Marks[s.ID] }))
+    .sort((a, b) => (isAb(a.v) ? -1 : Number(a.v)) > (isAb(b.v) ? -1 : Number(b.v)) ? -1 : 1);
+  $('printArea').innerHTML = `<div class="rc" style="max-width:640px"><div style="text-align:center"><b style="font-size:18px">${esc(S.settings.CenterName)}</b><div>${esc(e.Name)}${e.Subject ? ' \u{2014} ' + esc(e.Subject) : ''} \u{2014} ${esc(clsName(e.Class))}${e.Date ? ' \u{2014} ' + dmy(e.Date) : ''}</div><div>Full marks: ${full}</div></div>
+    <table style="width:100%;margin-top:10px"><tr><th>#</th><th>Name</th><th>Roll</th><th>Marks</th><th>%</th><th>Grade</th></tr>
+    ${list.map((x, i) => { const ab = isAb(x.v), pct = ab ? 0 : Math.round(Number(x.v) / full * 100);
+      return `<tr><td>${i + 1}</td><td>${esc(x.s.Name)}</td><td>${esc(x.s.Roll)}</td><td>${ab ? 'AB' : esc(x.v)}</td><td>${ab ? '' : pct + '%'}</td><td>${ab ? '' : grade(pct)}</td></tr>`; }).join('')}</table></div>`;
+  window.print();
+}
+async function studentReport(id) {
+  const pool = sortStu(S.students.filter(s => !S.ex.cls || s.Class === S.ex.cls));
+  if (!pool.length) return toast('No students');
+  const s = id ? stuById(id) : pool[0];
+  const exams = S.exams.filter(e => e.Class === s.Class).sort((a, b) => (a.Date || '').localeCompare(b.Date || ''));
+  let att = null;
+  try { att = await call('attendanceGet', { Session: S.session, Class: s.Class }); } catch (e) {}
+  const held = (att || []).filter(r => r.Data && r.Data[s.ID]), ab = held.filter(r => r.Data[s.ID] === 'A').length;
+  let got = 0, tot = 0;
+  const rows = exams.map(e => { const v = (e.Marks || {})[s.ID], full = Number(e.FullMarks);
+    if (!hasMark(v)) return `<tr><td>${esc(e.Name)}</td><td>${esc(e.Subject)}</td><td>\u{2014}</td><td></td><td></td></tr>`;
+    if (isAb(v)) return `<tr><td>${esc(e.Name)}</td><td>${esc(e.Subject)}</td><td>AB</td><td></td><td></td></tr>`;
+    got += Number(v); tot += full; const pct = Math.round(Number(v) / full * 100);
+    return `<tr><td>${esc(e.Name)}</td><td>${esc(e.Subject)}</td><td>${esc(v)}/${full}</td><td>${pct}%</td><td>${grade(pct)}</td></tr>`; }).join('');
+  const op = tot ? Math.round(got / tot * 100) : 0;
+  const attTxt = held.length ? `${held.length - ab} of ${held.length} classes (${Math.round((held.length - ab) / held.length * 100)}%)` : 'not taken yet';
+  const card = `<div class="rc"><div style="text-align:center"><b style="font-size:18px">${esc(S.settings.CenterName)}</b><div>Progress report \u{2014} Session ${esc(S.session)}</div></div>
+    <p>Name: <b>${esc(s.Name)}</b> &nbsp; ${esc(clsName(s.Class))} ${s.Roll ? '\u{b7} Roll ' + esc(s.Roll) : ''}<br>Guardian: ${esc(s.Guardian)}<br>Attendance: ${attTxt}</p>
+    <table style="width:100%"><tr><th>Exam</th><th>Subject</th><th>Marks</th><th>%</th><th>Grade</th></tr>${rows || '<tr><td colspan="5">No exams yet</td></tr>'}
+    ${tot ? `<tr><th colspan="2">Overall</th><th>${got}/${tot}</th><th>${op}%</th><th>${grade(op)}</th></tr>` : ''}</table><p style="text-align:right;margin-top:30px">Signature</p></div>`;
+  const msg = isBn()
+    ? `\u{9a8}\u{9ae}\u{9b8}\u{9cd}\u{995}\u{9be}\u{9b0} ${s.Guardian || '\u{985}\u{9ad}\u{9bf}\u{9ad}\u{9be}\u{9ac}\u{995}'},\n${s.Name} (${clsBn(s.Class)})-\u{98f}\u{9b0} \u{985}\u{997}\u{9cd}\u{9b0}\u{997}\u{9a4}\u{9bf}:\n` + exams.filter(e => hasMark((e.Marks || {})[s.ID])).map(e => `${e.Name}${e.Subject ? ' ' + e.Subject : ''}: ${e.Marks[s.ID]}/${e.FullMarks}`).join('\n') + (tot ? `\n\u{9ae}\u{9cb}\u{99f}: ${got}/${tot} (${op}%)` : '') + `\n\u{989}\u{9aa}\u{9b8}\u{9cd}\u{9a5}\u{9bf}\u{9a4}\u{9bf}: ${held.length ? (held.length - ab) + '/' + held.length : '-'}\n\u{2014} ${S.settings.CenterName}`
+    : `Dear ${s.Guardian || 'Guardian'},\nProgress of ${s.Name} (${clsName(s.Class)}):\n` + exams.filter(e => hasMark((e.Marks || {})[s.ID])).map(e => `${e.Name}${e.Subject ? ' ' + e.Subject : ''}: ${e.Marks[s.ID]}/${e.FullMarks}`).join('\n') + (tot ? `\nOverall: ${got}/${tot} (${op}%)` : '') + `\nAttendance: ${attTxt}\n\u{2014} ${S.settings.CenterName}`;
+  window._rep = card;
+  openModal('\u{1f4c4} Student report', `<label>Student</label><select onchange="studentReport(this.value)">${pool.map(x => `<option value="${x.ID}" ${x.ID === s.ID ? 'selected' : ''}>${esc(x.Name)} \u{2014} ${esc(clsName(x.Class))}</option>`).join('')}</select><div style="margin-top:12px">${card}</div>`,
+    `<button class="sec" onclick="$('printArea').innerHTML=window._rep;window.print()">\u{1f5a8}\u{fe0f} Print</button>${s.Phone ? msgButtons(s, msg).replace(/<a /g, '<a style="text-align:center;padding:10px" ') : ''}`);
+}
+
 // ================= Demo mode (code DEMO) \u{2014} sample data kept only in this browser tab =================
 const DEMO = { db: null };
 function ddmmyyyy(d) { return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); }
@@ -827,7 +1129,19 @@ function demoDB() {
     }
   });
   const notes = [['9','Physics - Chapter 1 Light'],['10','Maths - Trigonometry practice'],['8','English Grammar - Tense']].map((n, i) => ({ NoteID: 'N000' + (i + 1), Session: ses, Class: n[0], Title: n[1], FileID: '', URL: '#', Date: ddmmyyyy(now), FileName: '' }));
-  return { students, payments, notes, settings: { CenterName: 'Demo Coaching Centre', CenterPhone: '9800000000', Address: 'Your town', Classes: '5,6,7,8,9,10', SessionStartMonth: '1', CurrentSession: ses, Sessions: ses, AutoBackup: 'weekly', MsgLang: 'en' } };
+  const attendance = [], exams = [];
+  cls.forEach((c, ci) => {
+    for (let back = 45; back >= 0; back--) {
+      const dt = new Date(y, curM - 1, now.getDate() - back), d = dt.getDate(); if (dt.getFullYear() !== y) continue; if ((ci % 2 ? [2, 4, 6] : [1, 3, 5]).indexOf(dt.getDay()) < 0) continue;
+      const data = {}; students.filter(s => s.Class === c).forEach((s, si) => { const k = (si * 7 + d * 3 + ci) % 11; data[s.ID] = k === 0 ? 'A' : k === 5 ? 'L' : 'P'; });
+      attendance.push({ Date: isoOf(dt), Session: ses, Class: c, Data: data });
+    }
+    [['Unit Test 1', 'Maths', 50], ['Unit Test 1', 'Science', 50]].forEach((x, xi) => {
+      const marks = {}; students.filter(s => s.Class === c).forEach((s, si) => marks[s.ID] = si === 2 && xi ? 'AB' : 22 + ((si * 9 + ci * 5 + xi * 7) % 28));
+      exams.push({ ExamID: 'E' + pad2(ci * 2 + xi + 1), Session: ses, Class: c, Name: x[0], Subject: x[1], Date: y + '-' + pad2(Math.max(1, curM - 1)) + '-15', FullMarks: String(x[2]), Marks: marks });
+    });
+  });
+  return { students, payments, notes, attendance, exams, settings: { CenterName: 'Demo Coaching Centre', CenterPhone: '9800000000', Address: 'Your town', Classes: '5,6,7,8,9,10', SessionStartMonth: '1', CurrentSession: ses, Sessions: ses, AutoBackup: 'weekly', MsgLang: 'en', ClassDays: JSON.stringify({ '5': [1, 3, 5], '6': [1, 3, 5], '7': [2, 4, 6], '8': [2, 4, 6], '9': [1, 3, 5], '10': [2, 4, 6] }) } };
 }
 function demoCall(action, p) {
   const D = DEMO.db, today = ddmmyyyy(new Date());
@@ -835,7 +1149,15 @@ function demoCall(action, p) {
   const sessions = () => [...new Set([D.settings.CurrentSession].concat(D.students.map(s => s.Session)))].sort();
   switch (action) {
     case 'init': if (S.pw !== '1234') throw new Error('Demo password is 1234'); return { settings: D.settings, sessions: sessions(), url: '' };
-    case 'data': { const s = String(p.Session); return { students: D.students.filter(x => x.Session === s), payments: D.payments.filter(x => x.Session === s), notes: D.notes.filter(x => x.Session === s) }; }
+    case 'data': { const s = String(p.Session); return { students: D.students.filter(x => x.Session === s), payments: D.payments.filter(x => x.Session === s), notes: D.notes.filter(x => x.Session === s), exams: D.exams.filter(x => x.Session === s) }; }
+    case 'attendanceGet': return D.attendance.filter(r => r.Session === String(p.Session) && (!p.Class || r.Class === String(p.Class)) && (!p.Month || r.Date.slice(0, 7) === p.Month) && (!p.Date || r.Date === p.Date));
+    case 'saveAttendance': { const i = D.attendance.findIndex(r => r.Date === p.Date && r.Class === String(p.Class) && r.Session === String(p.Session)); const rec = { Date: p.Date, Session: String(p.Session), Class: String(p.Class), Data: p.Data };
+      if (i > -1) D.attendance[i] = rec; else D.attendance.push(rec); return true; }
+    case 'saveExam': { if (!String(p.Name || '').trim()) throw new Error('Enter the exam name'); if (!(Number(p.FullMarks) > 0)) throw new Error('Enter full marks');
+      const o = Object.assign({}, p, { FullMarks: String(Number(p.FullMarks)) });
+      if (p.ExamID) { const i = D.exams.findIndex(x => x.ExamID === p.ExamID); D.exams[i] = o; return p.ExamID; }
+      o.ExamID = 'E' + pad2(nextNum(D.exams, 'ExamID')); D.exams.push(o); return o.ExamID; }
+    case 'deleteExam': D.exams = D.exams.filter(x => x.ExamID !== p.ExamID); return true;
     case 'saveStudent': {
       if (!String(p.Name || '').trim()) throw new Error('Enter the student name');
       if (p.ID) { Object.assign(D.students.find(x => x.ID === p.ID), p); return p.ID; }
@@ -853,7 +1175,7 @@ function demoCall(action, p) {
       return { ReceiptNo: rno, Date: today };
     }
     case 'deleteReceipt': D.payments = D.payments.filter(x => x.ReceiptNo !== p.ReceiptNo); return true;
-    case 'saveSettings': ['CenterName','CenterPhone','Address','Classes','SessionStartMonth','MsgLang'].forEach(k => { if (p[k] !== undefined) D.settings[k] = String(p[k]); }); return D.settings;
+    case 'saveSettings': ['CenterName','CenterPhone','Address','Classes','SessionStartMonth','MsgLang','ClassDays'].forEach(k => { if (p[k] !== undefined) D.settings[k] = String(p[k]); }); return D.settings;
     case 'setCurrent': D.settings.CurrentSession = String(p.Name); return true;
     case 'changePassword': throw new Error('Password cannot be changed in the demo');
     case 'createSession': {
