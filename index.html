@@ -268,6 +268,11 @@ function sessMonths(name) {
   return a;
 }
 function call(action, p) {
+  if (S.lic && S.lic.demo) {
+    return new Promise((res, rej) => setTimeout(() => {
+      try { const v = demoCall(action, p || {}); res(v === undefined ? null : JSON.parse(JSON.stringify(v))); } catch (e) { rej(e); }
+    }, 120));
+  }
   $('busy').style.display = 'block';
   return new Promise((res, rej) => {
     fetch(S.server, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -303,7 +308,17 @@ function clsOptions(sel, all) {
 function defStartMonth() { const ms = sessMonths(S.session), cur = ym(); return ms.includes(cur) ? cur : ms[0]; }
 
 // ================= Messages =================
+const BMN = ['\u{99c}\u{9be}\u{9a8}\u{9c1}\u{9af}\u{9bc}\u{9be}\u{9b0}\u{9bf}','\u{9ab}\u{9c7}\u{9ac}\u{9cd}\u{9b0}\u{9c1}\u{9af}\u{9bc}\u{9be}\u{9b0}\u{9bf}','\u{9ae}\u{9be}\u{9b0}\u{9cd}\u{99a}','\u{98f}\u{9aa}\u{9cd}\u{9b0}\u{9bf}\u{9b2}','\u{9ae}\u{9c7}','\u{99c}\u{9c1}\u{9a8}','\u{99c}\u{9c1}\u{9b2}\u{9be}\u{987}','\u{986}\u{997}\u{9b8}\u{9cd}\u{99f}','\u{9b8}\u{9c7}\u{9aa}\u{9cd}\u{99f}\u{9c7}\u{9ae}\u{9cd}\u{9ac}\u{9b0}','\u{985}\u{995}\u{9cd}\u{99f}\u{9cb}\u{9ac}\u{9b0}','\u{9a8}\u{9ad}\u{9c7}\u{9ae}\u{9cd}\u{9ac}\u{9b0}','\u{9a1}\u{9bf}\u{9b8}\u{9c7}\u{9ae}\u{9cd}\u{9ac}\u{9b0}'];
+const isBn = () => S.settings.MsgLang === 'bn';
+const mLabelBn = m => { const [y, mm] = String(m).split('-'); return (BMN[+mm - 1] || m) + ' ' + (y || ''); };
+const clsBn = c => /^\d+$/.test(String(c)) ? '\u{995}\u{9cd}\u{9b2}\u{9be}\u{9b8} ' + c : String(c);
 function msgDue(st) {
+  if (isBn()) {
+    const dm = dueMonths(st), c = S.settings.CenterName, g = st.Guardian || '\u{985}\u{9ad}\u{9bf}\u{9ad}\u{9be}\u{9ac}\u{995}';
+    const ph = S.settings.CenterPhone ? `\n\u{9af}\u{9cb}\u{997}\u{9be}\u{9af}\u{9cb}\u{997}: ${S.settings.CenterPhone}` : '';
+    if (!dm.length) return `\u{9a8}\u{9ae}\u{9b8}\u{9cd}\u{995}\u{9be}\u{9b0} ${g},\n${st.Name} (${clsBn(st.Class)})-\u{98f}\u{9b0} \u{98f}\u{996}\u{9a8} \u{9aa}\u{9b0}\u{9cd}\u{9af}\u{9a8}\u{9cd}\u{9a4} \u{995}\u{9cb}\u{9a8}\u{9cb} \u{9ac}\u{9c7}\u{9a4}\u{9a8} \u{9ac}\u{9be}\u{995}\u{9bf} \u{9a8}\u{9c7}\u{987}\u{964} \u{9a7}\u{9a8}\u{9cd}\u{9af}\u{9ac}\u{9be}\u{9a6}\u{964}\n\u{2014} ${c}`;
+    return `\u{9a8}\u{9ae}\u{9b8}\u{9cd}\u{995}\u{9be}\u{9b0} ${g},\n${c} \u{9a5}\u{9c7}\u{995}\u{9c7} \u{99c}\u{9be}\u{9a8}\u{9be}\u{9a8}\u{9cb} \u{9b9}\u{99a}\u{9cd}\u{99b}\u{9c7} \u{9af}\u{9c7} ${st.Name} (${clsBn(st.Class)})-\u{98f}\u{9b0} ${dm.length} \u{9ae}\u{9be}\u{9b8}\u{9c7}\u{9b0} \u{9ac}\u{9c7}\u{9a4}\u{9a8} \u{98f}\u{996}\u{9a8}\u{9cb} \u{9ac}\u{9be}\u{995}\u{9bf} \u{986}\u{99b}\u{9c7}:\n${dm.map(mLabelBn).join(', ')}\n\u{9ae}\u{9cb}\u{99f} \u{9ac}\u{9be}\u{995}\u{9bf}: ${rs(dm.length * st.MonthlyFee)}\n\u{985}\u{9a8}\u{9c1}\u{997}\u{9cd}\u{9b0}\u{9b9} \u{995}\u{9b0}\u{9c7} \u{9b6}\u{9c0}\u{998}\u{9cd}\u{9b0} \u{99c}\u{9ae}\u{9be} \u{9a6}\u{9bf}\u{9a8}\u{964} \u{9a7}\u{9a8}\u{9cd}\u{9af}\u{9ac}\u{9be}\u{9a6}\u{964}\n\u{2014} ${c}${ph}`;
+  }
   const dm = dueMonths(st), c = S.settings.CenterName, g = st.Guardian || 'Guardian';
   const ph = S.settings.CenterPhone ? `\nContact: ${S.settings.CenterPhone}` : '';
   if (!dm.length) return `Dear ${g},\nThere are no pending fees for ${st.Name} (${clsName(st.Class)}) as of now. Thank you.\n\u{2014} ${c}`;
@@ -312,6 +327,16 @@ function msgDue(st) {
 function msgPaid(st, rno) {
   const rows = S.payments.filter(p => p.ReceiptNo === rno);
   if (!rows.length) return msgDue(st);
+  if (isBn()) {
+    const dm = dueMonths(st), c = S.settings.CenterName, g = st.Guardian || '\u{985}\u{9ad}\u{9bf}\u{9ad}\u{9be}\u{9ac}\u{995}';
+    return `\u{9a8}\u{9ae}\u{9b8}\u{9cd}\u{995}\u{9be}\u{9b0} ${g},
+${st.Name} (${clsBn(st.Class)})-\u{98f}\u{9b0} ${rows.map(r => mLabelBn(r.Month)).join(', ')} \u{9ae}\u{9be}\u{9b8}\u{9c7}\u{9b0} \u{9ac}\u{9c7}\u{9a4}\u{9a8} ${rs(sum(rows, r => r.Amount))} \u{9aa}\u{9be}\u{993}\u{9af}\u{9bc}\u{9be} \u{997}\u{9c7}\u{99b}\u{9c7}\u{964}
+\u{9b0}\u{9b8}\u{9bf}\u{9a6} \u{9a8}\u{982}: ${rno}, \u{9a4}\u{9be}\u{9b0}\u{9bf}\u{996}: ${rows[0].Date}
+` +
+      (dm.length ? `\u{98f}\u{996}\u{9a8}\u{9cb} ${dm.length} \u{9ae}\u{9be}\u{9b8} \u{9ac}\u{9be}\u{995}\u{9bf} \u{986}\u{99b}\u{9c7} (${dm.map(mLabelBn).join(', ')}) \u{2014} ${rs(dm.length * st.MonthlyFee)}` : `\u{98f}\u{996}\u{9a8} \u{9aa}\u{9b0}\u{9cd}\u{9af}\u{9a8}\u{9cd}\u{9a4} \u{995}\u{9cb}\u{9a8}\u{9cb} \u{9ac}\u{995}\u{9c7}\u{9af}\u{9bc}\u{9be} \u{9a8}\u{9c7}\u{987}\u{964}`) + `
+\u{9a7}\u{9a8}\u{9cd}\u{9af}\u{9ac}\u{9be}\u{9a6}\u{964}
+\u{2014} ${c}`;
+  }
   const dm = dueMonths(st), c = S.settings.CenterName, g = st.Guardian || 'Guardian';
   return `Dear ${g},\nWe have received ${rs(sum(rows, r => r.Amount))} towards the fees of ${st.Name} (${clsName(st.Class)}) for ${rows.map(r => mLabel(r.Month)).join(', ')}.\nReceipt No: ${rno}, Date: ${rows[0].Date}\n` +
     (dm.length ? `Still pending: ${plural(dm.length, 'month')} (${dm.map(mLabel).join(', ')}) \u{2014} ${rs(dm.length * st.MonthlyFee)}` : `No dues pending as of now.`) + `\nThank you.\n\u{2014} ${c}`;
@@ -337,7 +362,7 @@ async function login(saved) {
     if (S.lic && S.lic.center && /^(My Coaching Center|\u{0986}\u{09ae}\u{09be}\u{09b0} .*|)$/u.test(String(S.settings.CenterName || '').trim())) {
       try { S.settings = Object.assign(S.settings, await call('saveSettings', { CenterName: S.lic.center })); } catch (e) {}
     }
-    store('cc_pw', S.pw);
+    if (!(S.lic && S.lic.demo)) store('cc_pw', S.pw);
     $('login').hidden = true; $('app').hidden = false;
     await loadData();
   } catch (e) { store('cc_pw', null); $('login').hidden = false; toast(e.message); }
@@ -357,7 +382,7 @@ function renderShell() {
   $('tabs').innerHTML = TABS.map(([k, ic, t]) => `<button class="${k === S.tab || (k === 'students' && S.tab === 'bulk') ? 'on' : ''}" onclick="go('${k}')"><span class="ic">${ic}</span>${t}</button>`).join('');
   const t = TABS.find(x => x[0] === S.tab) || ['bulk', '\u{1f4dd}', 'Add Many Students'];
   $('pageTitle').textContent = t[1] + '  ' + t[2];
-  $('sessChip').textContent = 'Session ' + S.session;
+  $('sessChip').textContent = (S.lic && S.lic.demo ? 'DEMO \u{b7} ' : '') + 'Session ' + S.session;
   $('backBtn').hidden = (S.tab === 'dash');
 }
 function go(t, fromHistory) {
@@ -403,7 +428,7 @@ function vDash() {
     const ps = S.payments.filter(p => p.Month === m), amt = sum(ps, p => p.Amount);
     return `<tr>${td('Month', mLabel(m))}${td('Paid (students)', ps.length)}${td('Amount', `<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><div style="height:8px;border-radius:6px;background:linear-gradient(90deg,var(--p),var(--p2));width:${Math.round(amt / maxM * 120)}px"></div>${rs(amt)}</div>`)}</tr>`;
   }).join('');
-  return licBanner() + `
+  return demoBanner() + licBanner() + startCard() + `
   <div class="stats">
     <div class="stat c1"><span class="ic">\u{1f468}\u{200d}\u{1f393}</span><b>${act.length}</b><span>Active students</span></div>
     <div class="stat c2"><span class="ic">\u{1f4b5}</span><b>${rs(cashThis)}</b><span>Collected this month</span></div>
@@ -708,7 +733,9 @@ function vSettings() {
     <div style="margin-top:10px"><label>Address</label><input id="sAddr" value="${esc(st.Address)}"></div>
     <div class="row" style="margin-top:10px"><div style="flex:2"><label>Classes (comma separated, in order)</label><input id="sCls" value="${esc(st.Classes)}"></div>
       <div><label>Session starts in</label><select id="sSM">${MN.map((m, i) => `<option value="${i + 1}" ${String(i + 1) === String(st.SessionStartMonth) ? 'selected' : ''}>${m}</option>`).join('')}</select></div></div>
-    <p class="mu">Numbers show as "Class 5". You can also use names, e.g. 5,6,7,8,9,10,11 Science,11 Arts,12</p></div>
+    <p class="mu">Numbers show as "Class 5". You can also use names, e.g. 5,6,7,8,9,10,11 Science,11 Arts,12</p>
+    <div class="row keep" style="margin-top:6px"><div><label>Messages to guardians in</label><select id="sLang">
+      <option value="en" ${st.MsgLang !== 'bn' ? 'selected' : ''}>English</option><option value="bn" ${st.MsgLang === 'bn' ? 'selected' : ''}>\u{9ac}\u{9be}\u{982}\u{9b2}\u{9be} (Bengali)</option></select></div></div></div>
    <div class="card"><h3>Current session</h3><p class="mu" style="margin-top:0">Session shown first when the app opens: <b>${esc(st.CurrentSession)}</b></p>
     <button class="sec" onclick="setCur()">Make ${esc(S.session)} the current session</button></div>
    <div class="card"><h3>Change password</h3><div class="row"><div><input id="sPw" type="password" placeholder="New password"></div>
@@ -719,6 +746,8 @@ function vSettings() {
       <option value="weekly">Every Sunday night</option><option value="daily">Every night</option><option value="off">Off</option></select></div></div>
     <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="grn" onclick="backupNow()">Backup now</button><button class="sec" onclick="downloadExcel()">Download Excel</button></div>
     <div id="bkList" class="mu" style="margin-top:12px">Loading backups...</div></div>
+   <div class="card"><h3>Help &amp; support</h3><p class="mu" style="margin-top:0">Need help, a new feature or your licence renewed? Contact us.</p>${contactHTML(S.lic && S.lic.contact)}
+    <p class="mu" style="margin-bottom:0">App version 1.2${S.lic && S.lic.expiry && S.lic.expiry < '2099' ? ' \u{b7} Licence valid till ' + esc(S.lic.expiry) : ''}</p></div>
    <div class="card"><h3>Today's theme</h3><p class="mu" style="margin:0">\u{1f3a8} ${esc(THEME[0])} \u{2014} the colours change automatically every day of the week.</p></div>
    <div class="actionbar"><span class="grow">\u{2699}\u{fe0f} Settings</span><button onclick="saveSet()">\u{1f4be} Save Settings</button></div>`;
 }
@@ -753,7 +782,7 @@ async function restoreBackup(id, date) {
   try { toast('Restoring...', 15000); const r = await call('restoreBackup', { Id: id }); toast('Restored: ' + date, 5000); S.tab = 'dash'; await login(S.pw); } catch (e) { toast(e.message, 6000); }
 }
 async function saveSet() {
-  try { S.settings = Object.assign(S.settings, await call('saveSettings', { CenterName: $('sName').value, CenterPhone: $('sPhone').value, Address: $('sAddr').value, Classes: $('sCls').value, SessionStartMonth: $('sSM').value }));
+  try { S.settings = Object.assign(S.settings, await call('saveSettings', { CenterName: $('sName').value, CenterPhone: $('sPhone').value, Address: $('sAddr').value, Classes: $('sCls').value, SessionStartMonth: $('sSM').value, MsgLang: $('sLang').value }));
     toast('\u{2705} Saved'); renderShell(); render(); } catch (e) { toast(e.message); }
 }
 async function setCur() { try { await call('setCurrent', { Name: S.session }); S.settings.CurrentSession = S.session; toast('Current session: ' + S.session); render(); } catch (e) { toast(e.message); } }
@@ -778,6 +807,86 @@ async function publicNotes() {
       <div class="card"><div class="tw"><table class="rt" id="pnT">${show('')}</table></div></div></main>`;
     window._show = show;
   } catch (e) { pv.innerHTML = '<main><div class="card">Error: ' + esc(e.message) + '</div></main>'; }
+}
+
+// ================= Demo mode (code DEMO) \u{2014} sample data kept only in this browser tab =================
+const DEMO = { db: null };
+function ddmmyyyy(d) { return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); }
+function demoDB() {
+  const now = new Date(), y = now.getFullYear(), ses = String(y), curM = now.getMonth() + 1;
+  const names = ['Rahul Das','Priya Ghosh','Ankit Mondal','Sneha Roy','Arijit Pal','Moumita Sen','Soumen Dey','Riya Saha','Tanmoy Bera','Puja Maity','Bikash Hazra','Sayani Kar','Rohan Bag','Tania Khan','Subham Jana','Ishita Dutta','Amit Ghorai','Payel Sarkar'];
+  const cls = ['5','6','7','8','9','10'], fee = [300, 350, 400, 450, 500, 600];
+  const students = names.map((n, i) => ({ ID: 'S' + String(i + 1).padStart(4, '0'), Session: ses, Name: n, Class: cls[i % 6], Roll: String(Math.floor(i / 6) + 1),
+    Guardian: (i % 2 ? 'Mrs. ' : 'Mr. ') + n.split(' ')[1], Phone: '98000000' + String(10 + i), MonthlyFee: fee[i % 6], StartMonth: ses + '-01', Status: 'Active', Address: '', JoinDate: '05/01/' + y }));
+  const payments = []; let r = 0;
+  students.forEach((s, i) => {
+    const upto = Math.max(0, curM - (i % 4));
+    for (let m = 1; m <= upto; m++) {
+      r++; const mm = String(m).padStart(2, '0');
+      payments.push({ ReceiptNo: 'R' + String(r).padStart(5, '0'), Date: '0' + (1 + (i % 9)) + '/' + mm + '/' + y, StudentID: s.ID, Session: ses, Month: ses + '-' + mm, Amount: s.MonthlyFee, Mode: i % 3 ? 'Cash' : 'UPI / Online', Note: '' });
+    }
+  });
+  const notes = [['9','Physics - Chapter 1 Light'],['10','Maths - Trigonometry practice'],['8','English Grammar - Tense']].map((n, i) => ({ NoteID: 'N000' + (i + 1), Session: ses, Class: n[0], Title: n[1], FileID: '', URL: '#', Date: ddmmyyyy(now), FileName: '' }));
+  return { students, payments, notes, settings: { CenterName: 'Demo Coaching Centre', CenterPhone: '9800000000', Address: 'Your town', Classes: '5,6,7,8,9,10', SessionStartMonth: '1', CurrentSession: ses, Sessions: ses, AutoBackup: 'weekly', MsgLang: 'en' } };
+}
+function demoCall(action, p) {
+  const D = DEMO.db, today = ddmmyyyy(new Date());
+  const nextNum = (a, k) => a.reduce((m, x) => Math.max(m, parseInt(String(x[k]).replace(/\D/g, ''), 10) || 0), 0) + 1;
+  const sessions = () => [...new Set([D.settings.CurrentSession].concat(D.students.map(s => s.Session)))].sort();
+  switch (action) {
+    case 'init': if (S.pw !== '1234') throw new Error('Demo password is 1234'); return { settings: D.settings, sessions: sessions(), url: '' };
+    case 'data': { const s = String(p.Session); return { students: D.students.filter(x => x.Session === s), payments: D.payments.filter(x => x.Session === s), notes: D.notes.filter(x => x.Session === s) }; }
+    case 'saveStudent': {
+      if (!String(p.Name || '').trim()) throw new Error('Enter the student name');
+      if (p.ID) { Object.assign(D.students.find(x => x.ID === p.ID), p); return p.ID; }
+      const o = Object.assign({}, p, { ID: 'S' + String(nextNum(D.students, 'ID')).padStart(4, '0'), Status: p.Status || 'Active', JoinDate: today }); D.students.push(o); return o.ID;
+    }
+    case 'saveStudentsBulk': (p.List || []).forEach(x => D.students.push(Object.assign({}, x, { ID: 'S' + String(nextNum(D.students, 'ID')).padStart(4, '0'), Session: p.Session, Status: 'Active', JoinDate: today }))); return (p.List || []).length;
+    case 'deleteStudent': if (D.payments.some(x => x.StudentID === p.ID)) throw new Error('This student has fee records. Instead of deleting, set the status to "Inactive".'); D.students = D.students.filter(x => x.ID !== p.ID); return true;
+    case 'savePayment': {
+      const stu = D.students.find(x => x.ID === p.StudentID), months = (p.Months || []).map(String);
+      if (!months.length) throw new Error('Select at least one month');
+      const already = D.payments.filter(x => x.StudentID === stu.ID && months.indexOf(x.Month) > -1).map(x => x.Month);
+      if (already.length) throw new Error('Already paid for: ' + already.join(', '));
+      const rno = 'R' + String(nextNum(D.payments, 'ReceiptNo')).padStart(5, '0');
+      months.forEach(m => D.payments.push({ ReceiptNo: rno, Date: today, StudentID: stu.ID, Session: stu.Session, Month: m, Amount: Number(p.PerMonth) || 0, Mode: p.Mode || 'Cash', Note: p.Note || '' }));
+      return { ReceiptNo: rno, Date: today };
+    }
+    case 'deleteReceipt': D.payments = D.payments.filter(x => x.ReceiptNo !== p.ReceiptNo); return true;
+    case 'saveSettings': ['CenterName','CenterPhone','Address','Classes','SessionStartMonth','MsgLang'].forEach(k => { if (p[k] !== undefined) D.settings[k] = String(p[k]); }); return D.settings;
+    case 'setCurrent': D.settings.CurrentSession = String(p.Name); return true;
+    case 'changePassword': throw new Error('Password cannot be changed in the demo');
+    case 'createSession': {
+      const name = String(p.Name || '').trim(); let added = 0;
+      (p.Promote || []).forEach(x => { const s = D.students.find(y => y.ID === x.ID); if (!s) return; added++;
+        D.students.push(Object.assign({}, s, { ID: 'S' + String(nextNum(D.students, 'ID')).padStart(4, '0'), Session: name, Class: x.Class || s.Class, StartMonth: sessMonths(name)[0], Status: 'Active', JoinDate: today })); });
+      if (p.SetCurrent) D.settings.CurrentSession = name;
+      return { added, skipped: 0, sessions: [...new Set(sessions().concat([name]))].sort() };
+    }
+    case 'deleteNote': D.notes = D.notes.filter(x => x.NoteID !== p.NoteID); return true;
+    case 'backups': return { list: [], auto: 'weekly' };
+    case 'setAutoBackup': return { auto: p.Freq };
+    case 'publicNotes': return { center: D.settings.CenterName, session: D.settings.CurrentSession, classes: D.settings.Classes, notes: D.notes };
+    default: throw new Error('Not available in the demo \u{2014} this works in the real app.');
+  }
+}
+function demoBanner() {
+  if (!S.lic || !S.lic.demo) return '';
+  return `<div class="card" style="background:linear-gradient(135deg,#fef3c7,#fde68a);border-color:#fcd34d"><b>Demo mode</b> \u{2014} sample data only, nothing is saved. Try adding students, collecting fees and sending messages.
+    <div style="margin-top:8px">${contactHTML(S.lic.contact)}</div></div>`;
+}
+function startCard() {
+  if (S.lic && S.lic.demo) return '';
+  if (load('cc_hidestart') === '1') return '';
+  const noName = /^(My Coaching Center|)$/.test(String(S.settings.CenterName || '').trim());
+  if (S.students.length && !noName) return '';
+  const step = (n, done, text, btn) => `<div style="display:flex;gap:10px;align-items:center;margin:8px 0"><span class="avatar" style="background:${done ? '#16a34a' : 'var(--p)'}">${done ? '\u{2713}' : n}</span><div style="flex:1">${text}</div>${btn || ''}</div>`;
+  return `<div class="card"><h3>Getting started</h3>
+    ${step(1, !noName, 'Set your centre name, phone and classes', `<button class="sm" onclick="go('settings')">Settings</button>`)}
+    ${step(2, S.students.length > 0, 'Add your students (many at once)', `<button class="sm" onclick="bulkStart()">Add</button>`)}
+    ${step(3, S.payments.length > 0, 'Collect a fee and send the receipt on WhatsApp', `<button class="sm" onclick="go('fee')">Fees</button>`)}
+    ${step(4, false, 'Install on your phone: Chrome \u{22ee} \u{2192} Add to Home screen', '')}
+    <div style="text-align:right"><button class="sm ghost mu" onclick="store('cc_hidestart','1');render()">Hide this</button></div></div>`;
 }
 
 // ================= Licence =================
@@ -879,6 +988,15 @@ async function activate() {
 }
 async function openWithCode(code) {
   S.licCode = code;
+  if (code === 'DEMO') {
+    DEMO.db = demoDB();
+    S.lic = { ok: true, demo: true, code: 'DEMO', center: 'Demo Coaching Centre', expiry: '', contact: SELLER_CONTACT };
+    S.server = null;
+    $('gate').hidden = true; $('loginCenter').textContent = 'Demo Coaching Centre';
+    $('pw').placeholder = 'Demo password: 1234';
+    if (MODE === 'notes') return publicNotes();
+    $('login').hidden = false; return;
+  }
   $('busy').style.display = 'block';
   let lic;
   try { lic = await checkLicence(code); } catch (e) { $('busy').style.display = 'none'; showGate('', null); $('gateMsg').textContent = e.message; $('licCode').value = code; return; }
