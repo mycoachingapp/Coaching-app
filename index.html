@@ -14,7 +14,8 @@
 :root{--p:#4f46e5;--p2:#0ea5e9;--pl:#eef2ff;--g:#16a34a;--gl:#dcfce7;--r:#dc2626;--rl:#fee2e2;--mu:#64748b;--bd:#e5e7eb;--bg:#f4f6fb;--side:250px}
 [hidden]{display:none!important}
 *{box-sizing:border-box}
-html,body{margin:0}
+html,body{margin:0;overflow-x:hidden;max-width:100%}
+img,table,pre{max-width:100%}
 body{font-family:'Poppins',system-ui,sans-serif;background:var(--bg);color:#0f172a;font-size:14.5px;-webkit-tap-highlight-color:transparent}
 button,input,select,textarea{font-family:inherit;font-size:14.5px}
 input,select,textarea{width:100%;padding:10px 12px;border:1.5px solid #dbe1ea;border-radius:10px;background:#fff;outline:none;transition:border .15s,box-shadow .15s}
@@ -380,8 +381,8 @@ function renderShell() {
   $('themeName2').textContent = '\u{1f3a8} ' + THEME[0];
   $('todayTxt').textContent = new Date().toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' });
   $('sessSel').innerHTML = S.sessions.map(s => `<option ${s === S.session ? 'selected' : ''}>${esc(s)}</option>`).join('');
-  $('tabs').innerHTML = TABS.map(([k, ic, t]) => `<button class="${k === S.tab || (k === 'students' && S.tab === 'bulk') || (k === 'exam' && S.tab === 'marks') ? 'on' : ''}" onclick="go('${k}')"><span class="ic">${ic}</span>${t}</button>`).join('');
-  const t = TABS.find(x => x[0] === S.tab) || ({ bulk: ['bulk', '\u{1f4dd}', 'Add Many Students'], marks: ['marks', '\u{270f}\u{fe0f}', 'Enter Marks'] })[S.tab] || ['', '', ''];
+  $('tabs').innerHTML = TABS.map(([k, ic, t]) => `<button class="${k === S.tab || (k === 'students' && S.tab === 'bulk') || (k === 'exam' && (S.tab === 'marks' || S.tab === 'examatt')) ? 'on' : ''}" onclick="go('${k}')"><span class="ic">${ic}</span>${t}</button>`).join('');
+  const t = TABS.find(x => x[0] === S.tab) || ({ bulk: ['bulk', '\u{1f4dd}', 'Add Many Students'], marks: ['marks', '\u{270f}\u{fe0f}', 'Enter Marks'], examatt: ['examatt', '\u{1f4cb}', 'Exam Attendance'] })[S.tab] || ['', '', ''];
   $('pageTitle').textContent = t[1] + '  ' + t[2];
   $('sessChip').textContent = (S.lic && S.lic.demo ? 'DEMO \u{b7} ' : '') + 'Session ' + S.session;
   $('backBtn').hidden = (S.tab === 'dash');
@@ -793,7 +794,7 @@ async function saveSet() {
 async function setCur() { try { await call('setCurrent', { Name: S.session }); S.settings.CurrentSession = S.session; toast('Current session: ' + S.session); render(); } catch (e) { toast(e.message); } }
 async function chPw() { const n = $('sPw').value; try { await call('changePassword', { New: n }); S.pw = n; store('cc_pw', n); toast('\u{1f511} Password changed'); $('sPw').value = ''; } catch (e) { toast(e.message); } }
 
-const VIEWS = { attdash: vAttDash, att: vAtt, exam: vExam, marks: vMarks, dash: vDash, students: vStudents, bulk: vBulk, fee: vFee, due: vDue, notes: vNotes, year: vYear, settings: vSettings };
+const VIEWS = { examatt: vExamAtt, attdash: vAttDash, att: vAtt, exam: vExam, marks: vMarks, dash: vDash, students: vStudents, bulk: vBulk, fee: vFee, due: vDue, notes: vNotes, year: vYear, settings: vSettings };
 
 // ================= Public notes page for students =================
 async function publicNotes() {
@@ -950,7 +951,8 @@ function vAttDash() {
     const avg = st.length ? Math.round(st.reduce((a, o) => a + o.x.pct, 0) / st.length) : 0;
     const abs = st.reduce((a, o) => a + o.x.ab.length, 0);
     return `<tr>${td('Class', '<b>' + esc(clsName(c)) + '</b>')}${td('Days', esc(daysOf(c).map(d => WD[d]).join(', ') || '\u{2014}'))}${td('Classes held', recs.length)}${td('Absences', abs)}
-      ${td('Average', recs.length ? `<b style="color:${avg >= 75 ? 'var(--g)' : 'var(--r)'}">${avg}%</b>` : '\u{2014}')}</tr>`;
+      ${td('Average', recs.length ? `<b style="color:${avg >= 75 ? 'var(--g)' : 'var(--r)'}">${avg}%</b>` : '\u{2014}')}
+      ${td('', recs.length ? `<button class="sm" onclick="S.at.cls='${esc(c)}';attPeriodMsgs()">\u{1f4ac} Send to guardians</button>` : '')}</tr>`;
   }).join('');
   const todayCls = cls.filter(c => daysOf(c).indexOf(dow) > -1 || (A.all[c] || []).some(r => r.Date === today));
   const todayRows = todayCls.map(c => {
@@ -968,7 +970,7 @@ function vAttDash() {
   const avgAll = nPct ? Math.round(sumPct / nPct) : 0;
   return `<div class="card"><div class="row keep"><div><label>Period</label><select onchange="S.at.per=this.value;render()">
       <option value="this" ${A.per === 'this' ? 'selected' : ''}>This month</option><option value="last" ${A.per === 'last' ? 'selected' : ''}>Last month</option><option value="2m" ${A.per === '2m' ? 'selected' : ''}>Last 2 months</option></select></div>
-      <div style="flex:0"><label>&nbsp;</label><button class="sec" onclick="S.at.allLoaded=false;render();attLoadAll()">\u{21bb} Refresh</button></div></div>
+</div><div style="margin-top:10px"><button class="sm sec" onclick="S.at.allLoaded=false;render();attLoadAll()">\u{21bb} Refresh</button></div>
       <p class="mu" style="margin-bottom:0">${esc(pr.label)}</p></div>
    <div class="stats">
      <div class="stat c1"><span class="ic">\u{1f4c5}</span><b>${taken}/${todayCls.length}</b><span>Today's classes taken</span></div>
@@ -979,7 +981,7 @@ function vAttDash() {
    <div class="card"><h3>Today \u{2014} ${WD[dow]}, ${dmy(today)}</h3><div class="tw"><table class="rt">
      <tr class="hd"><th>Class</th><th>Status</th><th>Present</th><th>Absent</th><th></th></tr>${todayRows || `<tr><td class="full mu">No class today. Set class days in <a href="#" onclick="go('settings');return false">Settings</a>.</td></tr>`}</table></div></div>
    <div class="card"><h3>Class-wise</h3><div class="tw"><table class="rt">
-     <tr class="hd"><th>Class</th><th>Days</th><th>Classes held</th><th>Absences</th><th>Average</th></tr>${clsRows || '<tr><td class="full mu">No students yet</td></tr>'}</table></div></div>
+     <tr class="hd"><th>Class</th><th>Days</th><th>Classes held</th><th>Absences</th><th>Average</th><th></th></tr>${clsRows || '<tr><td class="full mu">No students yet</td></tr>'}</table></div></div>
    <div class="card"><h3>Below 75% attendance</h3><p class="mu" style="margin-top:0">Send the attendance summary to these guardians.</p><div class="tw"><table class="rt">
      <tr class="hd"><th>Student</th><th>Absent</th><th>Attendance</th><th></th></tr>${lowRows || '<tr><td class="full mu">Everyone is above 75% \u{1f389}</td></tr>'}</table></div></div>
    <div class="actionbar"><span class="grow">\u{1f4c8} Attendance</span><button onclick="go('att')">\u{1f4cb} Take attendance</button></div>`;
@@ -988,7 +990,7 @@ function vAttDash() {
 // ================= Exams & marks =================
 function grade(p) { return p >= 90 ? 'A+' : p >= 80 ? 'A' : p >= 70 ? 'B+' : p >= 60 ? 'B' : p >= 50 ? 'C' : p >= 40 ? 'D' : 'F'; }
 const isAb = v => String(v).trim().toUpperCase() === 'AB';
-const hasMark = v => v !== undefined && v !== null && String(v).trim() !== '';
+const hasMark = v => v !== undefined && v !== null && String(v).trim() !== '' && String(v).trim().toUpperCase() !== 'P';
 function examStats(e) {
   const vals = Object.keys(e.Marks || {}).map(k => e.Marks[k]).filter(v => hasMark(v) && !isAb(v)).map(Number).filter(v => !isNaN(v));
   const full = Number(e.FullMarks) || 0;
@@ -1000,11 +1002,11 @@ function vExam() {
   const groups = [...new Set(list.map(e => e.Class))].map(c => `<div class="clsh">${esc(clsName(c))}</div><div class="tw"><table class="rt">
     <tr class="hd"><th>Exam</th><th>Date</th><th>Full</th><th>Entered</th><th>Average</th><th></th></tr>
     ${list.filter(e => e.Class === c).map(e => { const st = examStats(e), tot = attStudents(c).length;
-      return `<tr>${td('', `<b>${esc(e.Name)}</b>${e.Subject ? ' \u{2014} ' + esc(e.Subject) : ''}`, 'full')}${td('Date', e.Date ? dmy(e.Date) : '\u{2014}')}${td('Full', esc(e.FullMarks))}
+      return `<tr>${td('', `<b>${esc(e.Name)}</b>${e.Subject ? ' \u{2014} ' + esc(e.Subject) : ''}`, 'full')}${td('Date', (e.Date ? dmy(e.Date) : '\u{2014}') + (e.Date === isoToday() ? ' <span class="tag tr">Today</span>' : e.Date > isoToday() ? ' <span class="tag tx">Upcoming</span>' : ''))}${td('Full', esc(e.FullMarks))}
         ${td('Entered', st.n + ' / ' + tot)}${td('Average', st.n ? (st.avg / st.full * 100).toFixed(0) + '%' : '\u{2014}')}
-        ${td('', `<div style="text-align:right;white-space:nowrap"><button class="sm" onclick="openMarks('${e.ExamID}')">\u{270f}\u{fe0f} Marks</button> <button class="sm sec" onclick="examResult('${e.ExamID}')">Result</button> <button class="sm ghost" onclick="examForm('${e.ExamID}')">\u{22ef}</button></div>`)}</tr>`; }).join('')}</table></div>`).join('');
+        ${td('', `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="sm sec" onclick="openExamAtt('${e.ExamID}')">\u{1f4cb} Attendance</button><button class="sm" onclick="openMarks('${e.ExamID}')">\u{270f}\u{fe0f} Marks</button> <button class="sm sec" onclick="examResult('${e.ExamID}')">Result</button><button class="sm ghost" onclick="examForm('${e.ExamID}')">\u{22ef}</button></div>`)}</tr>`; }).join('')}</table></div>`).join('');
   return `<div class="card"><div class="row keep"><div><label>Class</label><select onchange="S.ex.cls=this.value;render()">${clsOptions(E.cls, true)}</select></div>
-      <div style="flex:0"><label>&nbsp;</label><button class="sec" style="white-space:nowrap" onclick="studentReport()">\u{1f4c4} Student report</button></div></div></div>
+</div><div style="margin-top:10px"><button class="sm sec" onclick="studentReport()">\u{1f4c4} Student report</button></div></div>
     <div class="card"><h3>${plural(list.length, 'exam')} \u{2014} Session ${esc(S.session)}</h3>${groups || '<p class="mu">No exams yet. Press "+ New exam" to add one.</p>'}</div>
     <div class="actionbar"><span class="grow">\u{1f3c6} Exams &amp; Marks</span><button onclick="examForm()">+ New exam</button></div>`;
 }
@@ -1044,7 +1046,8 @@ function mkCount() { const all = [...document.querySelectorAll('input.mk')], n =
 async function marksSave() {
   const e = examById(S.ex.id), full = Number(e.FullMarks), marks = {}; let bad = null;
   document.querySelectorAll('input.mk').forEach(i => {
-    const v = i.value.trim(); if (!v) return;
+    const v = i.value.trim();
+    if (!v) { if (String((e.Marks || {})[i.dataset.id] || '').toUpperCase() === 'P') marks[i.dataset.id] = 'P'; return; }
     if (isAb(v)) { marks[i.dataset.id] = 'AB'; return; }
     const n = Number(v); if (isNaN(n) || n < 0 || n > full) { bad = bad || i; i.style.borderColor = 'var(--r)'; } else marks[i.dataset.id] = n;
   });
@@ -1066,11 +1069,11 @@ function examResult(id) {
   let rank = 0, last = null;
   const rows = list.map((x, i) => { const ab = isAb(x.v), pct = ab ? 0 : Math.round(Number(x.v) / full * 100);
     if (!ab && x.v !== last) { rank = i + 1; last = x.v; }
-    return `<tr><td>${ab ? '\u{2014}' : rank}</td><td><b>${esc(x.s.Name)}</b></td><td>${ab ? 'AB' : esc(x.v) + '/' + full}</td><td>${ab ? '' : pct + '% \u{b7} ' + grade(pct)}</td><td style="white-space:nowrap">${msgButtons(x.s, msgResult(x.s, e, x.v, st.hi))}</td></tr>`; }).join('');
+    return `<tr>${td('', `<b>${ab ? '\u{2014}' : '#' + rank}</b> &nbsp;<b>${esc(x.s.Name)}</b>`, 'full')}${td('Marks', ab ? 'AB' : esc(x.v) + '/' + full)}${td('%', ab ? '' : pct + '% \u{b7} ' + grade(pct))}${td('', `<div>${msgButtons(x.s, msgResult(x.s, e, x.v, st.hi))}</div>`)}</tr>`; }).join('');
   window._resId = id;
   openModal('Result \u{2014} ' + esc(e.Name) + (e.Subject ? ' \u{2014} ' + esc(e.Subject) : ''),
     `<p class="mu" style="margin-top:0">${esc(clsName(e.Class))} \u{b7} Highest ${st.hi}/${full} \u{b7} Average ${st.n ? (st.avg / full * 100).toFixed(0) + '%' : '\u{2014}'} \u{b7} ${st.n} appeared</p>
-     <div class="tw"><table><tr class="hd"><th>#</th><th>Name</th><th>Marks</th><th>%</th><th></th></tr>${rows || '<tr><td colspan="5" class="mu">No marks entered yet</td></tr>'}</table></div>`,
+     <div class="tw"><table class="rt"><tr class="hd"><th>Student</th><th>Marks</th><th>%</th><th></th></tr>${rows || '<tr><td class="full mu">No marks entered yet</td></tr>'}</table></div>`,
     `<button class="sec" onclick="resultPrint()">\u{1f5a8}\u{fe0f} Print</button><button class="sec" onclick="closeModal();openMarks('${id}')">\u{270f}\u{fe0f} Marks</button>`);
 }
 function resultPrint() {
@@ -1109,6 +1112,61 @@ async function studentReport(id) {
   window._rep = card;
   openModal('\u{1f4c4} Student report', `<label>Student</label><select onchange="studentReport(this.value)">${pool.map(x => `<option value="${x.ID}" ${x.ID === s.ID ? 'selected' : ''}>${esc(x.Name)} \u{2014} ${esc(clsName(x.Class))}</option>`).join('')}</select><div style="margin-top:12px">${card}</div>`,
     `<button class="sec" onclick="$('printArea').innerHTML=window._rep;window.print()">\u{1f5a8}\u{fe0f} Print</button>${s.Phone ? msgButtons(s, msg).replace(/<a /g, '<a style="text-align:center;padding:10px" ') : ''}`);
+}
+
+// ================= Exam-day attendance =================
+function openExamAtt(id) { S.ex.id = id; const e = examById(id); S.ex.att = {};
+  attStudents(e.Class).forEach(s => { S.ex.att[s.ID] = isAb((e.Marks || {})[s.ID]) ? 'A' : 'P'; }); go('examatt'); }
+function vExamAtt() {
+  const e = examById(S.ex.id); if (!e) return '<div class="card mu">Exam not found</div>';
+  const list = attStudents(e.Class), A = S.ex.att || {}, recorded = list.some(s => hasMark((e.Marks || {})[s.ID]) || String((e.Marks || {})[s.ID] || '').toUpperCase() === 'P');
+  const btn = (id, v, lab, col) => `<button class="sm" style="min-width:42px;${A[id] === v ? `background:${col};color:#fff` : 'background:#eef1f6;color:#475569;box-shadow:none'}" onclick="S.ex.att['${id}']='${v}';keepRender()">${lab}</button>`;
+  const rows = list.map(s => `<tr>${td('', `<div class="who">${avatar(s.Name)}<div><b>${esc(s.Name)}</b><div class="mu">${s.Roll ? 'Roll ' + esc(s.Roll) : ''}</div></div></div>`, 'full')}
+      ${td('', `<div style="display:flex;gap:6px;justify-content:flex-end">${btn(s.ID, 'P', 'Present', '#16a34a')}${btn(s.ID, 'A', 'Absent', '#dc2626')}</div>`)}</tr>`).join('');
+  const nA = list.filter(s => A[s.ID] === 'A').length;
+  return `<div class="card"><b style="font-size:16px">${esc(e.Name)}${e.Subject ? ' \u{2014} ' + esc(e.Subject) : ''}</b>
+      <div class="mu">${esc(clsName(e.Class))} \u{b7} Exam date ${e.Date ? dmy(e.Date) : '\u{2014}'} ${recorded ? '\u{b7} <span class="tag tg">Saved</span>' : ''}</div>
+      <p class="mu" style="margin:6px 0 0">Mark who sat the exam. Absent students get "AB" in the marks list automatically.</p></div>
+    <div class="card"><div style="margin:-4px 0 8px"><button class="sm sec" onclick="list_all('P')">All present</button></div>
+      <div class="tw"><table class="rt"><tr class="hd"><th>Student</th><th style="text-align:right">Exam attendance</th></tr>${rows || '<tr><td class="full mu">No students in this class</td></tr>'}</table></div></div>
+    <div class="actionbar"><span class="grow">Present ${list.length - nA} \u{b7} Absent ${nA}</span><button class="sec" onclick="examAttReport('${e.ExamID}')">Report</button><button class="grn" onclick="examAttSave()">\u{1f4be} Save</button></div>`;
+}
+function keepRender() { const y = window.scrollY; render(); window.scrollTo(0, y); }
+function list_all(v) { const e = examById(S.ex.id); attStudents(e.Class).forEach(s => S.ex.att[s.ID] = v); keepRender(); }
+async function examAttSave() {
+  const e = examById(S.ex.id), marks = Object.assign({}, e.Marks || {});
+  attStudents(e.Class).forEach(s => {
+    const cur = marks[s.ID];
+    if (S.ex.att[s.ID] === 'A') marks[s.ID] = 'AB';
+    else if (!hasMark(cur) || isAb(cur)) marks[s.ID] = 'P';      // present; marks can be added later
+  });
+  try { await call('saveExam', Object.assign({}, e, { Marks: marks })); toast('\u{2705} Exam attendance saved'); await loadData(); S.tab = 'examatt'; examAttReport(e.ExamID); }
+  catch (x) { toast(x.message, 5000); }
+}
+function msgExamAbsent(st, e) {
+  const c = S.settings.CenterName, ex = e.Name + (e.Subject ? ' (' + e.Subject + ')' : ''), d = e.Date ? dmy(e.Date) : '';
+  if (isBn()) return `\u{9a8}\u{9ae}\u{9b8}\u{9cd}\u{995}\u{9be}\u{9b0} ${st.Guardian || '\u{985}\u{9ad}\u{9bf}\u{9ad}\u{9be}\u{9ac}\u{995}'},\n${d} \u{9a4}\u{9be}\u{9b0}\u{9bf}\u{996}\u{9c7} ${ex} \u{9aa}\u{9b0}\u{9c0}\u{995}\u{9cd}\u{9b7}\u{9be}\u{9af}\u{9bc} ${st.Name} (${clsBn(st.Class)}) \u{985}\u{9a8}\u{9c1}\u{9aa}\u{9b8}\u{9cd}\u{9a5}\u{9bf}\u{9a4} \u{99b}\u{9bf}\u{9b2}\u{964}\n\u{9aa}\u{9cd}\u{9b0}\u{9af}\u{9bc}\u{9cb}\u{99c}\u{9a8}\u{9c7} \u{986}\u{9ae}\u{9be}\u{9a6}\u{9c7}\u{9b0} \u{9b8}\u{999}\u{9cd}\u{997}\u{9c7} \u{9af}\u{9cb}\u{997}\u{9be}\u{9af}\u{9cb}\u{997} \u{995}\u{9b0}\u{9c1}\u{9a8}\u{964} \u{9a7}\u{9a8}\u{9cd}\u{9af}\u{9ac}\u{9be}\u{9a6}\u{964}\n\u{2014} ${c}`;
+  return `Dear ${st.Guardian || 'Guardian'},\n${st.Name} (${clsName(st.Class)}) was absent in the ${ex} exam${d ? ' on ' + d : ''} at ${c}.\nPlease contact us if needed. Thank you.\n\u{2014} ${c}`;
+}
+function examAttReport(id) {
+  const e = examById(id); if (!e) return;
+  const list = attStudents(e.Class), m = e.Marks || {};
+  const absent = list.filter(s => isAb(m[s.ID])), present = list.filter(s => !isAb(m[s.ID]) && (hasMark(m[s.ID]) || String(m[s.ID] || '').toUpperCase() === 'P'));
+  const notTaken = list.length - absent.length - present.length;
+  window._eaId = id;
+  openModal('Exam attendance \u{2014} ' + esc(e.Name), `<p class="mu" style="margin-top:0">${esc(clsName(e.Class))}${e.Subject ? ' \u{b7} ' + esc(e.Subject) : ''} \u{b7} ${e.Date ? dmy(e.Date) : ''}</p>
+    <div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat c2"><b>${present.length}</b><span>Present</span></div><div class="stat c4"><b>${absent.length}</b><span>Absent</span></div></div>
+    ${notTaken ? `<p class="mu">${notTaken} not marked yet.</p>` : ''}
+    <h4 style="margin:8px 0">Absent \u{2014} send to guardians</h4>
+    ${absent.map(s => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--bd)"><b>${esc(s.Name)}</b><span>${msgButtons(s, msgExamAbsent(s, e))}</span></div>`).join('') || '<p class="mu">Nobody was absent \u{1f389}</p>'}
+    <h4 style="margin:14px 0 6px">Present</h4><p class="mu" style="margin:0">${present.map(s => esc(s.Name)).join(', ') || '\u{2014}'}</p>`,
+    `<button class="sec" onclick="examAttPrint()">\u{1f5a8}\u{fe0f} Print</button><button class="sec" onclick="closeModal()">Done</button>`);
+}
+function examAttPrint() {
+  const e = examById(window._eaId), m = e.Marks || {}, list = attStudents(e.Class);
+  $('printArea').innerHTML = `<div class="rc"><div style="text-align:center"><b style="font-size:18px">${esc(S.settings.CenterName)}</b><div>Exam attendance \u{2014} ${esc(e.Name)}${e.Subject ? ' \u{2014} ' + esc(e.Subject) : ''}</div><div>${esc(clsName(e.Class))} \u{b7} ${e.Date ? dmy(e.Date) : ''}</div></div>
+    <table style="width:100%;margin-top:10px"><tr><th>#</th><th>Name</th><th>Roll</th><th>Status</th></tr>${list.map((s, i) => `<tr><td>${i + 1}</td><td>${esc(s.Name)}</td><td>${esc(s.Roll)}</td><td>${isAb(m[s.ID]) ? 'Absent' : (hasMark(m[s.ID]) || String(m[s.ID] || '').toUpperCase() === 'P') ? 'Present' : '\u{2014}'}</td></tr>`).join('')}</table></div>`;
+  window.print();
 }
 
 // ================= Demo mode (code DEMO) \u{2014} sample data kept only in this browser tab =================
