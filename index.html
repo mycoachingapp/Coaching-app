@@ -162,7 +162,11 @@ pre.msg{white-space:pre-wrap;background:var(--pl);border-radius:12px;padding:12p
 </head>
 <body>
 <script>
-// Licences are kept in licenses.js (same GitHub folder). Edit that file to add or renew customers.
+// ===== LICENCES =====
+// Main list: your Google Sheet "Licenses", published to the web as CSV (File > Share > Publish to web).
+// Paste that CSV link below once. If it is missing or cannot be read, licenses.js is used instead.
+const LICENCE_SHEET_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTIKH_Bu5pKfgywsxt-dBU7wYN8NYIzl1MjqE4-V61HiYWWHN1y5dXjy93xbFTYQ-1R4fhCdwGtpbhU/pub?gid=2142379764&single=true&output=csv';
+const SELLER_CONTACT = { name: 'Sujay Mukhopadhyay', phone: '8768483938' };
 const QS = new URLSearchParams(location.search);
 const MODE = QS.get('p') || '';
 window.onerror = function (m, s, l) {
@@ -801,26 +805,69 @@ function loadLicences() {
     document.head.appendChild(s);
   });
 }
+function parseCSV(text) {
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cur); cur = ''; }
+    else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+    else if (ch !== '\r') cur += ch;
+  }
+  if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+function normDate(s) {
+  s = String(s || '').trim(); let m;
+  if ((m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/))) return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0');
+  if ((m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/))) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0'); // dd/mm/yyyy
+  const d = new Date(s); return isNaN(d) ? '' : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+async function loadSheetLicences() {
+  const url = LICENCE_SHEET_CSV + (LICENCE_SHEET_CSV.indexOf('?') > -1 ? '&' : '?') + 't=' + Date.now();
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('sheet ' + r.status);
+  const rows = parseCSV(await r.text()).filter(x => x.some(v => String(v).trim()));
+  if (rows.length < 1) throw new Error('empty sheet');
+  const head = rows[0].map(h => String(h).trim().toLowerCase().replace(/\s+/g, ''));
+  const col = names => head.findIndex(h => names.indexOf(h) > -1);
+  const iC = col(['code']), iN = col(['centername', 'center', 'name']), iS = col(['serverurl', 'server', 'url']),
+        iE = col(['expiry', 'expirydate']), iT = col(['status']);
+  if (iC < 0 || iS < 0) throw new Error('sheet columns not found');
+  const list = {};
+  rows.slice(1).forEach(x => {
+    const code = String(x[iC] || '').trim(); if (!code) return;
+    list[code] = { center: iN > -1 ? String(x[iN] || '').trim() : '', server: String(x[iS] || '').trim(),
+                   expiry: iE > -1 ? normDate(x[iE]) : '', status: iT > -1 ? (String(x[iT] || '').trim() || 'Active') : 'Active' };
+  });
+  return list;
+}
 async function checkLicence(code) {
-  try {
-    await loadLicences();
-    if (typeof LICENSES === 'undefined') throw new Error('bad file');
-  } catch (e) {
-    // Offline or file missing: use the last good answer if it has not expired
+  let list = null, contact = SELLER_CONTACT;
+  if (!/PASTE_/.test(LICENCE_SHEET_CSV)) { try { list = await loadSheetLicences(); } catch (e) { console.warn('Licence sheet:', e.message); } }
+  if (!list) {
+    try {
+      await loadLicences();
+      if (typeof LICENSES !== 'undefined') { list = LICENSES; if (typeof SELLER !== 'undefined' && SELLER) contact = SELLER; }
+    } catch (e) {}
+  }
+  if (!list) {
+    // Offline: use the last good answer if it has not expired
     let old = null; try { old = JSON.parse(load('cc_lic') || 'null'); } catch (x) {}
     const today = new Date().toISOString().slice(0, 10);
     if (old && old.ok && old.code === code && (!old.expiry || old.expiry >= today)) return old;
     throw new Error(navigator.onLine ? 'Could not load the licence list. Try again.' : 'No internet connection.');
   }
-  const contact = (typeof SELLER !== 'undefined' && SELLER) || {};
   let row = null;
-  Object.keys(LICENSES).forEach(k => { if (String(k).trim().toUpperCase() === code) row = LICENSES[k]; });
+  Object.keys(list).forEach(k => { if (String(k).trim().toUpperCase() === code) row = list[k]; });
   if (!row) return { ok: false, reason: 'notfound', contact: contact };
   const today = new Date().toISOString().slice(0, 10);
-  const base = { code: code, center: row.center || '', expiry: row.expiry || '', contact: contact };
+  const expiry = normDate(row.expiry);
+  const base = { code: code, center: row.center || '', expiry: expiry, contact: contact };
   let r;
   if (String(row.status || 'Active').toLowerCase() === 'blocked') r = Object.assign({ ok: false, reason: 'blocked' }, base);
-  else if (row.expiry && row.expiry < today) r = Object.assign({ ok: false, reason: 'expired' }, base);
+  else if (expiry && expiry < today) r = Object.assign({ ok: false, reason: 'expired' }, base);
   else if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(String(row.server || '').trim())) r = Object.assign({ ok: false, reason: 'noserver' }, base);
   else r = Object.assign({ ok: true, server: String(row.server).trim() }, base);
   store('cc_lic', JSON.stringify(r));
