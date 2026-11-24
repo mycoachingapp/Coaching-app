@@ -867,7 +867,7 @@ async function createSess() {
 // ================= Settings =================
 function vSettings() {
   const st = S.settings;
-  return `<div class="card"><h3>Coaching center details</h3>
+  return `${installCard()}<div class="card"><h3>Coaching center details</h3>
     <div class="row"><div><label>Center name</label><input id="sName" value="${esc(st.CenterName)}"></div>
       <div><label>Phone number</label><input id="sPhone" type="tel" value="${esc(st.CenterPhone)}"></div></div>
     <div style="margin-top:10px"><label>Address</label><input id="sAddr" value="${esc(st.Address)}"></div>
@@ -890,7 +890,6 @@ function vSettings() {
       <option value="weekly">Every Sunday night</option><option value="daily">Every night</option><option value="off">Off</option></select></div></div>
     <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="grn" onclick="backupNow()">Backup now</button><button class="sec" onclick="downloadExcel()">Download Excel</button></div>
     <div id="bkList" class="mu" style="margin-top:12px">Loading backups...</div></div>
-   ${installCard()}
    <div class="card"><h3>Help &amp; support</h3><p class="mu" style="margin-top:0">Works without internet too: fees, attendance, marks and new students are saved on this phone and sent automatically when you are online again.</p><p class="mu">Need help, a new feature or your licence renewed? Contact us.</p>${contactHTML(S.lic && S.lic.contact)}
     <p class="mu" style="margin-bottom:0">App version 1.2${S.lic && S.lic.expiry && S.lic.expiry < '2099' ? ' \u{b7} Licence valid till ' + esc(S.lic.expiry) : ''}</p></div>
    <div class="card"><h3>Today's theme</h3><p class="mu" style="margin:0">\u{1f3a8} ${esc(THEME[0])} \u{2014} the colours change automatically every day of the week.</p></div>
@@ -1560,8 +1559,15 @@ async function installApp() {
     '<button class="sec" onclick="closeModal()">OK</button>');
 }
 function installCard() {
-  if (isStandalone()) return '';
-  return `<div class="card"><h3>Install on this phone</h3><p class="mu" style="margin-top:0">Put the app on your home screen \u{2014} opens full-screen, no browser needed.</p><button onclick="installApp()">\u{1f4f2} Install app</button></div>`;
+  const inst = isStandalone();
+  return `<div class="card" style="border-left:5px solid var(--p)"><h3>\u{1f4f2} Install on phone / computer</h3>
+    <p class="mu" style="margin-top:0">${inst ? '\u{2705} This app is already installed on this device. To put it on another phone, open the link there, or share it:' : 'Put the app on your home screen \u{2014} opens full-screen like a normal app, no browser needed.'}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${inst ? '' : '<button onclick="installApp()">\u{1f4f2} Install app</button>'}<button class="sec" onclick="shareAppLink()">\u{1f4e4} Share app link</button></div></div>`;
+}
+async function shareAppLink() {
+  const url = location.origin + location.pathname + (S.licCode ? '?c=' + encodeURIComponent(S.licCode) : '');
+  try { if (navigator.share) { await navigator.share({ title: (S.settings && S.settings.CenterName) || 'Coaching app', url: url }); return; } } catch (e) { return; }
+  try { await navigator.clipboard.writeText(url); toast('\u{2705} Link copied: ' + url, 5000); } catch (e) { openModal('App link', '<p style="word-break:break-all"><b>' + esc(url) + '</b></p>', '<button class="sec" onclick="closeModal()">OK</button>'); }
 }
 start();
 if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('sw.js'); } catch (e) {} }
