@@ -212,7 +212,7 @@ window.onerror = function (m, s, l) {
   </aside>
   <div id="scrim" onclick="toggleSide(false)"></div>
   <div class="wrap">
-    <div class="topbar"><button id="menuBtn" onclick="toggleSide(true)">&#x2630;</button><button id="backBtn" hidden onclick="history.back()" title="Back">&#x2190;</button><h2 id="pageTitle"></h2><span class="chip" id="sessChip"></span></div>
+    <div class="topbar"><button id="menuBtn" onclick="toggleSide(true)">&#x2630;</button><button id="backBtn" hidden onclick="history.back()" title="Back">&#x2190;</button><h2 id="pageTitle"></h2><span class="chip" id="netChip" hidden onclick="netClick()" style="cursor:pointer"></span><span class="chip" id="sessChip"></span></div>
     <main id="view"></main>
   </div>
 </div>
@@ -269,21 +269,158 @@ function sessMonths(name) {
   for (let i = 0; i < 12; i++) { const k = sm - 1 + i; a.push((y + Math.floor(k / 12)) + '-' + String(k % 12 + 1).padStart(2, '0')); }
   return a;
 }
-function call(action, p) {
+// ================= Server calls with offline support =================
+// Reads are saved on this device. Without internet the app shows the saved data, and these changes are
+// kept in a queue and sent automatically when the internet comes back: new/edited students, fee collection,
+// attendance, exams and marks.
+const QUEUE_OK = ['saveStudent', 'saveStudentsBulk', 'savePayment', 'saveAttendance', 'saveExam'];
+const ckey = k => 'cc_' + k + '_' + (S.licCode || 'x');
+function getCache() { try { return JSON.parse(load(ckey('cache')) || 'null') || { data: {}, att: {} }; } catch (e) { return { data: {}, att: {} }; } }
+function putCache(x) { try { localStorage.setItem(ckey('cache'), JSON.stringify(x)); } catch (e) {} }
+function getOut() { try { return JSON.parse(load(ckey('out')) || '[]') || []; } catch (e) { return []; } }
+function putOut(o) { store(ckey('out'), o.length ? JSON.stringify(o) : null); updNet(); }
+function pwHash(t) { let h = 5381; for (const ch of String(t)) h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0; return String(h); }
+function todayDMY() { const d = new Date(); return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear(); }
+
+function rawCall(action, p) {
+  $('busy').style.display = 'block';
+  const ctl = window.AbortController ? new AbortController() : null;
+  const tm = setTimeout(() => { if (ctl) ctl.abort(); }, action === 'uploadNote' ? 120000 : 30000);
+  return fetch(S.server, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ pw: S.pw, action: action, p: p || {} }), signal: ctl ? ctl.signal : undefined })
+    .then(r => r.json(), () => { const x = new Error('net'); x.net = true; throw x; })
+    .then(r => { if (r && r.ok) return r.data; throw new Error(r ? r.err : 'Server error'); })
+    .finally(() => { clearTimeout(tm); $('busy').style.display = 'none'; });
+}
+function cacheResult(action, p, r) {
+  const x = getCache();
+  if (action === 'init') { x.init = r; x.pwh = pwHash(S.pw); }
+  else if (action === 'data') x.data[p.Session] = r;
+  else if (action === 'attendanceGet') mergeAtt(x, p.Session, r);
+  else if (action === 'saveAttendance') mergeAtt(x, p.Session, [{ Date: p.Date, Class: String(p.Class), Data: p.Data }]);
+  else return;
+  putCache(x);
+}
+function mergeAtt(x, ses, rows) {
+  const arr = x.att[ses] || (x.att[ses] = []);
+  rows.forEach(r => { const i = arr.findIndex(a => a.Date === r.Date && a.Class === r.Class); if (i > -1) arr[i] = r; else arr.push(r); });
+}
+async function call(action, p) {
   if (S.lic && S.lic.demo) {
     return new Promise((res, rej) => setTimeout(() => {
       try { const v = demoCall(action, p || {}); res(v === undefined ? null : JSON.parse(JSON.stringify(v))); } catch (e) { rej(e); }
     }, 120));
   }
-  $('busy').style.display = 'block';
-  return new Promise((res, rej) => {
-    fetch(S.server, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                      body: JSON.stringify({ pw: S.pw, action: action, p: p || {} }) })
-      .then(r => r.json())
-      .then(r => { $('busy').style.display = 'none'; (r && r.ok) ? res(r.data) : rej(new Error(r ? r.err : 'Server error')); })
-      .catch(e => { $('busy').style.display = 'none'; rej(new Error(navigator.onLine ? 'Cannot reach the server. Try again.' : 'No internet connection.')); });
-  });
+  p = p || {};
+  const pending = getOut().length > 0;
+  // While older offline changes are still waiting, keep using the saved copy so everything stays in order
+  const useLocal = pending && (QUEUE_OK.indexOf(action) > -1 || ['init', 'data', 'attendanceGet'].indexOf(action) > -1);
+  if (navigator.onLine && !useLocal) {
+    try { const r = await rawCall(action, p); cacheResult(action, p, r); return r; }
+    catch (e) { if (!e.net) throw e; }
+  }
+  const r = offlineCall(action, p);
+  if (pending && navigator.onLine) setTimeout(syncOutbox, 300);
+  return r;
 }
+function offlineCall(action, p) {
+  const x = getCache(), today = todayDMY();
+  const need = () => { throw new Error(navigator.onLine ? 'Could not reach the server. Try again in a moment.' : 'No internet. This needs internet \u{2014} your data is safe, try again when online.'); };
+  switch (action) {
+    case 'init':
+      if (!x.init) need();
+      if (x.pwh && x.pwh !== pwHash(S.pw)) throw new Error('Wrong password');
+      return x.init;
+    case 'data':
+      if (!x.data[p.Session]) need();
+      return x.data[p.Session];
+    case 'attendanceGet':
+      return (x.att[p.Session] || []).filter(r => (!p.Class || r.Class === String(p.Class)) && (!p.Month || r.Date.slice(0, 7) === p.Month) && (!p.Date || r.Date === p.Date));
+  }
+  if (QUEUE_OK.indexOf(action) < 0) need();
+  const out = getOut(), tmpId = pfx => pfx + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const D = ses => x.data[ses] || need();
+  let result;
+  if (action === 'saveStudent' || action === 'saveStudentsBulk') {
+    const list = action === 'saveStudent' ? [p] : (p.List || []).map(s => Object.assign({}, s, { Session: p.Session }));
+    const ids = [];
+    list.forEach(s => {
+      const d = D(s.Session), ex = s.ID && d.students.find(y => y.ID === s.ID);
+      if (!String(s.Name || '').trim()) throw new Error('Enter the student name');
+      if (ex) { Object.assign(ex, s); out.push({ action: 'saveStudent', p: s }); ids.push(s.ID); }
+      else { const id = tmpId('T'); d.students.push(Object.assign({}, s, { ID: id, Status: s.Status || ACTIVE, JoinDate: today }));
+             out.push({ action: 'saveStudent', p: Object.assign({}, s, { ID: '' }), tmp: id }); ids.push(id); }
+    });
+    result = action === 'saveStudent' ? ids[0] : ids.length;
+  } else if (action === 'savePayment') {
+    let d = null, stu = null;
+    Object.keys(x.data).forEach(k => { const f = x.data[k].students.find(y => y.ID === p.StudentID); if (f) { d = x.data[k]; stu = f; } });
+    if (!stu) need();
+    const months = (p.Months || []).map(String);
+    if (!months.length) throw new Error('Select at least one month');
+    const already = d.payments.filter(y => y.StudentID === stu.ID && months.indexOf(y.Month) > -1).map(y => y.Month);
+    if (already.length) throw new Error('Already paid for: ' + already.join(', '));
+    const rno = 'OFF-' + (new Set(d.payments.filter(y => /^OFF-/.test(y.ReceiptNo)).map(y => y.ReceiptNo)).size + 1);
+    months.forEach(m => d.payments.push({ ReceiptNo: rno, Date: today, StudentID: stu.ID, Session: stu.Session, Month: m, Amount: Number(p.PerMonth) || 0, Mode: p.Mode || 'Cash', Note: p.Note || '' }));
+    out.push({ action: action, p: p });
+    result = { ReceiptNo: rno, Date: today };
+  } else if (action === 'saveAttendance') {
+    mergeAtt(x, p.Session, [{ Date: p.Date, Class: String(p.Class), Data: p.Data }]);
+    out.push({ action: action, p: p }); result = true;
+  } else if (action === 'saveExam') {
+    const d = D(p.Session), ex = p.ExamID && d.exams && d.exams.find(y => y.ExamID === p.ExamID);
+    d.exams = d.exams || [];
+    if (ex) { Object.assign(ex, p); out.push({ action: action, p: p }); result = p.ExamID; }
+    else { const id = tmpId('TE'); d.exams.push(Object.assign({}, p, { ExamID: id })); out.push({ action: action, p: Object.assign({}, p, { ExamID: '' }), tmp: id }); result = id; }
+  }
+  putCache(x); putOut(out);
+  toast('\u{1f4f4} Saved on this phone \u{2014} will be sent when internet is back', 4000);
+  return JSON.parse(JSON.stringify(result === undefined ? null : result));
+}
+let syncing = false;
+async function syncOutbox() {
+  if (syncing || !navigator.onLine || !S.server || (S.lic && S.lic.demo)) return;
+  let out = getOut(); if (!out.length) return;
+  syncing = true; updNet();
+  let map = {}; try { map = JSON.parse(load(ckey('map')) || '{}') || {}; } catch (e) {}
+  const errs = []; let stopped = false;
+  try {
+    while (out.length) {
+      const it = out[0]; let s = JSON.stringify(it.p);
+      Object.keys(map).forEach(k => { s = s.split('"' + k + '"').join('"' + map[k] + '"'); });
+      try {
+        const r = await rawCall(it.action, JSON.parse(s));
+        if (it.tmp) { map[it.tmp] = r; store(ckey('map'), JSON.stringify(map)); }
+      } catch (e) {
+        if (e.net) { stopped = true; break; }
+        const lbl = { saveStudent: 'Student', savePayment: 'Fee', saveAttendance: 'Attendance', saveExam: 'Exam' }[it.action] || it.action;
+        const who = it.p.Name || (it.p.StudentID && ((S.students || []).find(y => y.ID === it.p.StudentID) || {}).Name) || (it.p.Date ? it.p.Date + ' \u00b7 ' + clsName(it.p.Class) : '');
+        errs.push(lbl + (who ? ' (' + who + ')' : '') + ': ' + e.message);
+      }
+      out.shift(); putOut(out);
+    }
+  } finally { syncing = false; }
+  if (!out.length) store(ckey('map'), null);
+  updNet();
+  if (stopped) return;
+  if (errs.length) openModal('Some offline changes could not be saved', '<p class="mu" style="margin-top:0">These were not saved on the server (for example, the fee was already collected on another phone):</p><ul>' + errs.map(e => '<li>' + esc(e) + '</li>').join('') + '</ul>', '<button class="sec" onclick="closeModal()">OK</button>');
+  else toast('\u{2705} Offline changes synced');
+  try { if (!$('app').hidden) await loadData(); } catch (e) {}
+}
+function updNet() {
+  const el = $('netChip'); if (!el) return;
+  const n = getOut().length;
+  if (!navigator.onLine) { el.hidden = false; el.textContent = '\u{1f4f4} Offline' + (n ? ' \u{b7} ' + n + ' to send' : ''); el.style.background = '#fee2e2'; el.style.color = '#b91c1c'; }
+  else if (n) { el.hidden = false; el.textContent = (syncing ? '\u{1f504} Sending ' : '\u{23f3} ') + n + ' to send'; el.style.background = '#fef3c7'; el.style.color = '#92400e'; }
+  else el.hidden = true;
+}
+function netClick() {
+  if (navigator.onLine) return syncOutbox();
+  toast('No internet. You can keep working \u{2014} fees, attendance, marks and students are saved on this phone and sent later.', 5000);
+}
+window.addEventListener('online', () => { updNet(); syncOutbox(); });
+window.addEventListener('offline', updNet);
+setInterval(() => { if (getOut().length) syncOutbox(); }, 60000);
 function toast(t, ms) { const el = $('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(el._t); el._t = setTimeout(() => el.style.display = 'none', ms || 3000); }
 function openModal(title, body, foot) {
   $('modalBox').innerHTML = `<div class="mhead"><span>${title}</span><button class="ghost" onclick="closeModal()">\u{2715}</button></div>
@@ -367,7 +504,8 @@ async function login(saved) {
     if (!(S.lic && S.lic.demo)) store('cc_pw', S.pw);
     $('login').hidden = true; $('app').hidden = false;
     await loadData();
-  } catch (e) { store('cc_pw', null); $('login').hidden = false; toast(e.message); }
+    updNet(); setTimeout(syncOutbox, 500);
+  } catch (e) { if (navigator.onLine) store('cc_pw', null); $('login').hidden = false; toast(e.message, 5000); }
 }
 function logout() { store('cc_pw', null); location.reload(); }
 async function loadData() {
@@ -753,7 +891,7 @@ function vSettings() {
     <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="grn" onclick="backupNow()">Backup now</button><button class="sec" onclick="downloadExcel()">Download Excel</button></div>
     <div id="bkList" class="mu" style="margin-top:12px">Loading backups...</div></div>
    ${installCard()}
-   <div class="card"><h3>Help &amp; support</h3><p class="mu" style="margin-top:0">Need help, a new feature or your licence renewed? Contact us.</p>${contactHTML(S.lic && S.lic.contact)}
+   <div class="card"><h3>Help &amp; support</h3><p class="mu" style="margin-top:0">Works without internet too: fees, attendance, marks and new students are saved on this phone and sent automatically when you are online again.</p><p class="mu">Need help, a new feature or your licence renewed? Contact us.</p>${contactHTML(S.lic && S.lic.contact)}
     <p class="mu" style="margin-bottom:0">App version 1.2${S.lic && S.lic.expiry && S.lic.expiry < '2099' ? ' \u{b7} Licence valid till ' + esc(S.lic.expiry) : ''}</p></div>
    <div class="card"><h3>Today's theme</h3><p class="mu" style="margin:0">\u{1f3a8} ${esc(THEME[0])} \u{2014} the colours change automatically every day of the week.</p></div>
    <div class="actionbar"><span class="grow">\u{2699}\u{fe0f} Settings</span><button onclick="saveSet()">\u{1f4be} Save Settings</button></div>`;
@@ -1337,6 +1475,9 @@ async function checkLicence(code) {
   let list = null, contact = SELLER_CONTACT;
   if (!/PASTE_/.test(LICENCE_SHEET_CSV)) { try { list = await loadSheetLicences(); } catch (e) { console.warn('Licence sheet:', e.message); } }
   if (!list) {
+    let old = null; try { old = JSON.parse(load('cc_lic') || 'null'); } catch (x) {}
+    const today0 = new Date().toISOString().slice(0, 10);
+    if (old && old.ok && old.code === code && (!old.expiry || old.expiry >= today0)) return old;
     try {
       await loadLicences();
       if (typeof LICENSES !== 'undefined') { list = LICENSES; if (typeof SELLER !== 'undefined' && SELLER) contact = SELLER; }
