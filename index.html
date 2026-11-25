@@ -14,7 +14,7 @@
 :root{--p:#4f46e5;--p2:#0ea5e9;--pl:#eef2ff;--g:#16a34a;--gl:#dcfce7;--r:#dc2626;--rl:#fee2e2;--mu:#64748b;--bd:#e5e7eb;--bg:#f4f6fb;--side:250px}
 [hidden]{display:none!important}
 *{box-sizing:border-box}
-html,body{margin:0;overflow-x:hidden;max-width:100%}
+html,body{margin:0;overflow-x:hidden;max-width:100%}@supports (overflow:clip){html,body{overflow-x:clip}}
 img,table,pre{max-width:100%}
 body{font-family:'Poppins',system-ui,sans-serif;background:var(--bg);color:#0f172a;font-size:14.5px;-webkit-tap-highlight-color:transparent}
 button,input,select,textarea{font-family:inherit;font-size:14.5px}
@@ -52,6 +52,15 @@ a{color:var(--p)}
 
 .wrap{margin-left:var(--side);min-height:100vh}
 .topbar{position:sticky;top:0;z-index:30;background:#ffffffeb;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 18px;display:flex;align-items:center;gap:12px}
+.topbar{flex-wrap:wrap}
+#ticker{flex-basis:100%;order:9;overflow:hidden;white-space:nowrap;margin:2px -18px -10px;padding:5px 0;background:linear-gradient(90deg,var(--pl),#e0f2fe);border-top:1px solid var(--bd);font-size:13px;font-weight:600;color:#3730a3;cursor:pointer}
+#ticker span{display:inline-block;padding-left:100%;animation:tick 30s linear infinite}
+#ticker:hover span,#ticker:active span{animation-play-state:paused}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){#ticker span{animation:none;padding-left:12px}}
+@media (max-width:860px){#ticker{margin:2px -12px -8px}}
+.rt-i{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--bd)}
+.rt-i:last-child{border-bottom:0}.rt-i .rt-t{flex:1;min-width:0}.rt-i button{flex:0 0 auto}
 .topbar h2{margin:0;font-size:18px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 details.fold summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
 details.fold summary::-webkit-details-marker{display:none}
@@ -212,7 +221,7 @@ window.onerror = function (m, s, l) {
   </aside>
   <div id="scrim" onclick="toggleSide(false)"></div>
   <div class="wrap">
-    <div class="topbar"><button id="menuBtn" onclick="toggleSide(true)">&#x2630;</button><button id="backBtn" hidden onclick="history.back()" title="Back">&#x2190;</button><h2 id="pageTitle"></h2><span class="chip" id="netChip" hidden onclick="netClick()" style="cursor:pointer"></span><span class="chip" id="sessChip"></span></div>
+    <div class="topbar"><button id="menuBtn" onclick="toggleSide(true)">&#x2630;</button><button id="backBtn" hidden onclick="history.back()" title="Back">&#x2190;</button><h2 id="pageTitle"></h2><span class="chip" id="netChip" hidden onclick="netClick()" style="cursor:pointer"></span><span class="chip" id="sessChip"></span><div id="ticker" hidden onclick="go('dash')"></div></div>
     <main id="view"></main>
   </div>
 </div>
@@ -546,8 +555,72 @@ document.addEventListener('keydown', e => {
   if (!$('modal').hidden) return closeModal();
   if (S.tab !== 'dash') history.back();
 });
-function render() { $('view').innerHTML = VIEWS[S.tab](); if (AFTER[S.tab]) AFTER[S.tab](); }
+function render() { $('view').innerHTML = VIEWS[S.tab](); if (AFTER[S.tab]) AFTER[S.tab](); updTicker(); }
 const AFTER = {};
+
+// ================= Daily routine (today's work) =================
+function routine() {
+  if (!S.students || !S.settings) return [];
+  const now = new Date(), today = isoToday(), wd = now.getDay(), cd = classDays();
+  const hasStu = c => attStudents(c).length > 0;
+  const taken = (c, d) => (S.at.all[c] || []).some(r => r.Date === d);
+  const items = [];
+  // Today's classes and their attendance
+  classes().filter(c => (cd[c] || []).indexOf(wd) > -1 && hasStu(c)).forEach(c => {
+    const done = S.at.allLoaded && taken(c, today);
+    items.push({ k: done ? 'ok' : 'cls', t: '\u{1f4da} <b>' + esc(clsName(c)) + '</b> class today \u{b7} ' + (done ? '<span class="tag tg">attendance taken</span>' : 'attendance not taken yet'),
+      s: clsName(c) + (done ? ' \u{2705}' : ' class \u{2013} take attendance'),
+      b: done ? '' : `<button class="sm" onclick="takeAtt('${esc(c)}')">\u{270d}\u{fe0f} Take</button>` });
+  });
+  // Exams today and in the next 7 days
+  const in7 = isoOf(new Date(now.getTime() + 7 * 86400000));
+  S.exams.filter(e => e.Date === today).forEach(e => items.push({ k: 'exam', t: '\u{1f4dd} <b>Exam today:</b> ' + esc(e.Name) + (e.Subject ? ' \u{b7} ' + esc(e.Subject) : '') + ' (' + esc(clsName(e.Class)) + ')',
+    s: 'Exam today: ' + e.Name + ' (' + clsName(e.Class) + ')', b: `<button class="sm" onclick="openExamAtt('${esc(e.ExamID)}')">\u{2705} Present / absent</button>` }));
+  S.exams.filter(e => e.Date > today && e.Date <= in7).sort((a, b) => a.Date.localeCompare(b.Date)).forEach(e => {
+    const d = new Date(e.Date + 'T12:00:00');
+    items.push({ k: 'soon', t: '\u{1f5d3}\u{fe0f} <b>Upcoming exam</b> ' + WD[d.getDay()] + ' ' + dmy(e.Date) + ': ' + esc(e.Name) + (e.Subject ? ' \u{b7} ' + esc(e.Subject) : '') + ' (' + esc(clsName(e.Class)) + ')',
+      s: 'Exam on ' + WD[d.getDay()] + ' ' + dmy(e.Date) + ': ' + e.Name + ' (' + clsName(e.Class) + ')', b: '' });
+  });
+  // Exams already held but marks not entered for everyone
+  S.exams.filter(e => e.Date && e.Date < today).forEach(e => {
+    const m = e.Marks || {}, miss = attStudents(e.Class).filter(s => !hasMark(m[s.ID])).length;
+    if (miss) items.push({ k: 'due', t: '\u{1f4ca} <b>Marks pending:</b> ' + esc(e.Name) + ' (' + esc(clsName(e.Class)) + ') \u{b7} ' + miss + ' student' + (miss > 1 ? 's' : ''),
+      s: 'Marks pending: ' + e.Name + ' (' + clsName(e.Class) + ')', b: `<button class="sm" onclick="openMarks('${esc(e.ExamID)}')">Enter marks</button>` });
+  });
+  // Class days in the last 7 days with no attendance (grouped per class; only after the class started taking attendance)
+  if (S.at.allLoaded) {
+    classes().filter(c => hasStu(c) && (S.at.all[c] || []).length).forEach(c => {
+      const first = (S.at.all[c] || []).reduce((m, r) => r.Date < m ? r.Date : m, '9999'), miss = [];
+      for (let i = 7; i >= 1; i--) { const d = new Date(now.getTime() - i * 86400000), iso = isoOf(d);
+        if ((cd[c] || []).indexOf(d.getDay()) > -1 && iso >= first && !taken(c, iso)) miss.push(iso); }
+      if (miss.length) items.push({ k: 'due', t: '⏳ <b>Attendance missing:</b> ' + esc(clsName(c)) + ' · ' + miss.map(x => WD[new Date(x + 'T12:00:00').getDay()] + ' ' + x.slice(8) + '/' + x.slice(5, 7)).join(', '),
+        s: 'Attendance missing: ' + clsName(c) + ' (' + miss.length + ' day' + (miss.length > 1 ? 's' : '') + ')',
+        b: `<button class="sm sec" onclick="S.at.cls='${esc(c)}';S.at.date='${miss[miss.length - 1]}';S.at.loadedKey='';go('att')">Take</button>` });
+    });
+  }
+  // Fees
+  const dueN = S.students.filter(s => dueMonths(s).length).length;
+  if (dueN) items.push({ k: 'fee', t: '\u{1f4b0} <b>' + dueN + '</b> student' + (dueN > 1 ? 's have' : ' has') + ' fees due', s: dueN + ' student' + (dueN > 1 ? 's' : '') + ' with fees due', b: `<button class="sm sec" onclick="go('due')">See</button>` });
+  return items;
+}
+function routineCard() {
+  const it = routine(), d = new Date(), todo = it.filter(x => x.k === 'cls' || x.k === 'exam' || x.k === 'due').length, cd = classDays();
+  const noDays = !Object.keys(cd).some(k => (cd[k] || []).length);
+  return `<div class="card" style="border-left:5px solid var(--p2)"><h3>\u{1f4c5} Today's routine \u{b7} ${WD[d.getDay()]}, ${dmy(isoToday())} ${todo ? `<span class="tag tr">${todo} to do</span>` : '<span class="tag tg">All done</span>'}</h3>
+    ${it.length ? it.map(x => `<div class="rt-i"><div class="rt-t">${x.t}</div>${x.b}</div>`).join('') : '<p class="mu" style="margin:0">No class or exam today. \u{1f60a}</p>'}
+    ${noDays ? `<p class="mu" style="margin-bottom:0">Tip: tick each class's days in <a href="#" onclick="go('settings');return false">Settings \u{2192} Class days</a> to see today's classes here.</p>` : ''}
+    ${S.at.allLoaded ? '' : '<p class="mu" style="margin-bottom:0">Checking attendance...</p>'}</div>`;
+}
+function updTicker() {
+  const el = $('ticker'); if (!el) return;
+  const it = routine();
+  if (!S.students) { el.hidden = true; return; }
+  const parts = it.filter(x => x.k !== 'ok').map(x => x.s).concat(it.filter(x => x.k === 'ok').map(x => x.s));
+  const txt = '\u{1f4c5} Today (' + WD[new Date().getDay()] + '): ' + (parts.length ? parts.join('   \u{2022}   ') : 'No class or exam today');
+  if (el.dataset.t === txt && !el.hidden) return; // keep the scroll running smoothly
+  el.dataset.t = txt; el.hidden = false; el.innerHTML = '<span>' + esc(txt) + '</span>';
+}
+AFTER.dash = () => { if (!S.at.allLoaded) attLoadAll(); };
 
 // ================= Dashboard =================
 function vDash() {
@@ -568,7 +641,7 @@ function vDash() {
     const ps = S.payments.filter(p => p.Month === m), amt = sum(ps, p => p.Amount);
     return `<tr>${td('Month', mLabel(m))}${td('Paid (students)', ps.length)}${td('Amount', `<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><div style="height:8px;border-radius:6px;background:linear-gradient(90deg,var(--p),var(--p2));width:${Math.round(amt / maxM * 120)}px"></div>${rs(amt)}</div>`)}</tr>`;
   }).join('');
-  return demoBanner() + licBanner() + startCard() + `
+  return demoBanner() + licBanner() + startCard() + routineCard() + `
   <div class="stats">
     <div class="stat c1"><span class="ic">\u{1f468}\u{200d}\u{1f393}</span><b>${act.length}</b><span>Active students</span></div>
     <div class="stat c2"><span class="ic">\u{1f4b5}</span><b>${rs(cashThis)}</b><span>Collected this month</span></div>
@@ -1071,7 +1144,7 @@ async function attLoadAll() {
     const rows = await call('attendanceGet', { Session: S.session });
     const by = {}; rows.forEach(r => (by[r.Class] = by[r.Class] || []).push(r));
     S.at.all = by; S.at.allLoaded = true; S.at.loadedKey = '';
-    if (S.tab === 'attdash') render();
+    if (S.tab === 'attdash' || S.tab === 'dash') render(); else updTicker();
   } catch (e) { toast(e.message, 5000); }
 }
 AFTER.attdash = () => { if (!S.at.allLoaded) attLoadAll(); };
