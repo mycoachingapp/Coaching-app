@@ -1003,7 +1003,7 @@ async function saveSet() {
     toast('\u{2705} Saved'); renderShell(); render(); } catch (e) { toast(e.message); }
 }
 async function setCur() { try { await call('setCurrent', { Name: S.session }); S.settings.CurrentSession = S.session; toast('Current session: ' + S.session); render(); } catch (e) { toast(e.message); } }
-async function chPw() { const n = $('sPw').value; try { await call('changePassword', { New: n }); S.pw = n; store('cc_pw', n); toast('\u{1f511} Password changed'); $('sPw').value = ''; } catch (e) { toast(e.message); } }
+async function chPw() { const n = $('sPw').value; try { await call('changePassword', { New: n }); S.pw = n; store('cc_pw', n); { const x = getCache(); x.pwh = pwHash(n); putCache(x); } toast('\u{1f511} Password changed'); $('sPw').value = ''; } catch (e) { toast(e.message); } }
 
 const VIEWS = { examatt: vExamAtt, attdash: vAttDash, att: vAtt, exam: vExam, marks: vMarks, dash: vDash, students: vStudents, bulk: vBulk, fee: vFee, due: vDue, notes: vNotes, year: vYear, settings: vSettings };
 
